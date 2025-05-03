@@ -1,6 +1,7 @@
 // src/components/PolicySearchUI.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
+
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 
@@ -16,8 +17,10 @@ export default function PolicySearchUI() {
   const [transcript, setTranscript] = useState('');
   const [promptText, setPromptText] = useState('');
   const [policies, setPolicies] = useState<Policy[]>([]);
+  const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg'>('base');
   const recogRef = useRef<any>(null);
 
+  // 음성 토글
   const toggleListen = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return alert('음성 인식을 지원하지 않습니다.');
@@ -39,16 +42,23 @@ export default function PolicySearchUI() {
     }
   };
 
+  // 뒤로가기: 검색 초기화
+  const handleBack = () => {
+    setPolicies([]);
+    setTranscript('');
+    setPromptText('');
+  };
+
+  // 예시 문장
   const examples = [
     '장애인 지원 정책을 알려줘.',
     '노인 대상 복지 혜택 추천해줘.',
     '청년 취업 지원 제도 알려줘.',
   ];
 
-  // NOTE: 여기서 실제 검색 로직(Whisper→RAG→API)을 호출해서 setPolicies 해 주시면 됩니다.
+  // 검색 (더미 데이터)
   const doSearch = () => {
     if (!promptText) return alert('질문을 입력하거나 말해주세요.');
-    // 예시 더미 데이터
     setPolicies([
       {
         id: '1',
@@ -71,30 +81,57 @@ export default function PolicySearchUI() {
     ]);
   };
 
+  // Tailwind 크기 맵
+  const sizeMap = { sm: 'text-sm', base: 'text-base', lg: 'text-lg' } as const;
+
   return (
-    <div className="flex w-full h-full min-h-screen bg-gray-50">
+    <div className={`flex w-full h-full min-h-screen bg-gray-50 ${sizeMap[fontSize]}`}>
+      {/* 폰트 크기 조절 */}
+      <div className="absolute top-4 right-4 flex items-center space-x-2">
+        <span className="font-medium">폰트 크기:</span>
+        {(['sm','base','lg'] as const).map(sz => (
+          <button
+            key={sz}
+            onClick={() => setFontSize(sz)}
+            className={`px-2 py-1 rounded ${
+              fontSize === sz ? 'bg-blue-600 text-white' : 'bg-gray-200'
+            }`}
+          >
+            {sz === 'sm' ? '작게' : sz === 'base' ? '보통' : '크게'}
+          </button>
+        ))}
+      </div>
+
       {/* LEFT PANEL */}
       <motion.div
-        className="p-8 bg-white shadow-lg"
+        className="p-8 bg-white shadow-lg z-10"
         initial={{ width: '100%' }}
         animate={{ width: policies.length ? '40%' : '100%' }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-3xl font-bold mb-6">
-          말로 만나는 복지 도우미
-        </h1>
+        {/* 뒤로가기 버튼 */}
+        {policies.length > 0 && (
+          <button
+            onClick={handleBack}
+            className="mb-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+          >
+            ← 뒤로가기
+          </button>
+        )}
+
+        <h1 className="text-3xl font-bold mb-6">말로 만나는 복지 도우미</h1>
 
         <div className="space-y-4">
           <div className="flex space-x-4">
             <button
               onClick={toggleListen}
-              className="flex-1 py-3 bg-blue-600 text-white rounded-lg text-lg hover:bg-blue-700"
+              className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               {listening ? '■ 중지' : '🎙️ 말하기'}
             </button>
             <button
               onClick={() => { setTranscript(''); setPromptText(''); }}
-              className="py-3 px-4 bg-gray-300 rounded-lg text-lg hover:bg-gray-400"
+              className="py-3 px-4 bg-gray-300 rounded-lg hover:bg-gray-400"
             >
               지우기
             </button>
@@ -103,7 +140,7 @@ export default function PolicySearchUI() {
           <div>
             <label className="block mb-1 font-medium">📝 인식된 텍스트</label>
             <textarea
-              className="w-full border p-2 rounded-lg resize-none text-lg"
+              className="w-full border p-2 rounded-lg resize-none"
               rows={2}
               value={transcript}
               onChange={e => { setTranscript(e.target.value); setPromptText(e.target.value); }}
@@ -118,7 +155,9 @@ export default function PolicySearchUI() {
                   key={ex}
                   onClick={() => { setPromptText(ex); setTranscript(ex); }}
                   className="text-blue-600 underline"
-                >{ex}</button>
+                >
+                  {ex}
+                </button>
               ))}
             </div>
           </div>
@@ -127,7 +166,7 @@ export default function PolicySearchUI() {
             <label className="block mb-1 font-medium">🔧 최종 질문</label>
             <input
               type="text"
-              className="w-full border p-2 rounded-lg text-lg"
+              className="w-full border p-2 rounded-lg"
               value={promptText}
               onChange={e => setPromptText(e.target.value)}
               placeholder="질문을 입력하거나 수정하세요."
@@ -136,7 +175,7 @@ export default function PolicySearchUI() {
 
           <button
             onClick={doSearch}
-            className="w-full py-3 bg-green-600 text-white rounded-lg text-lg hover:bg-green-700 transition"
+            className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
             ✅ 확인 & 전송
           </button>
@@ -156,7 +195,7 @@ export default function PolicySearchUI() {
               <div className="px-6 py-4 border-b bg-blue-50">
                 <h2 className="text-xl font-bold">{p.title}</h2>
               </div>
-              <div className="p-6 text-lg">{p.description}</div>
+              <div className="p-6">{p.description}</div>
               <div className="px-6 py-4 border-t text-right">
                 <a
                   href={p.url}
