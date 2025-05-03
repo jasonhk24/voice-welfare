@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export default function SpeechRecognizer() {
   const [listening, setListening] = useState(false);
   const [text, setText] = useState('');
 
   const startRecognition = () => {
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    const SpeechRecognition =
+      (window as unknown as { webkitSpeechRecognition: new () => SpeechRecognition }).webkitSpeechRecognition ||
+      (window as unknown as { SpeechRecognition: new () => SpeechRecognition }).SpeechRecognition;
+
     if (!SpeechRecognition) {
       alert('이 브라우저는 음성 인식을 지원하지 않습니다.');
       return;
