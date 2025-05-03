@@ -60,9 +60,9 @@ export default function SpeechToChat() {
       } else {
         // 답변을 문장 단위로 쪼개서 배열에 저장
         const parts = answer
-          .split(/(?:\r?\n)+/)    // 빈 줄 기준
-          .map(s => s.trim())
-          .filter(s => s);
+            .split(/(?:\r?\n)+/)                // 빈 줄 기준
+            .map((s: string) => s.trim())       // s가 string임을 명시
+            .filter((s: string) => Boolean(s)); // s가 string임을 명시
         setReplies(parts);
       }
     } catch {
