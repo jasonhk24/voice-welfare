@@ -71,7 +71,7 @@ export default function PolicySearchUI() {
   ];
 
   return (
-    <div className={`relative flex w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 ${sizeClasses[fontStep]}`}>
+    <div className={`relative flex w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 ${sizeClasses[fontStep]} ${policies.length ? '' : 'justify-center items-center'}`}>
       {/* 폰트 조절 (카드 뷰가 아닐 때만 표시) */}
       {!policies.length && (
         <div className="absolute top-4 right-4 flex items-center space-x-2 z-20">
@@ -101,9 +101,9 @@ export default function PolicySearchUI() {
 
       {/* LEFT PANEL (입력부) */}
       <motion.div
-        className="flex-shrink-0 w-full lg:w-1/2 p-8 bg-white shadow-lg transition-all"
-        initial={{ width: '100%' }}
-        animate={{ width: policies.length ? '50%' : '100%' }}
+        className={`flex-shrink-0 p-8 bg-white shadow-lg transition-all ${policies.length ? 'w-full lg:w-1/2' : 'max-w-md w-full mx-auto'}`}
+        initial={{ width: policies.length ? '50%' : 500 }}
+        animate={{ width: policies.length ? '50%' : 500 }}
         transition={{ duration: 0.3 }}
       >
         <div className="space-y-6">
