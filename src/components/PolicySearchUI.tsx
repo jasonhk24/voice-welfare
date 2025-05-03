@@ -101,10 +101,10 @@ export default function PolicySearchUI() {
 
       {/* LEFT PANEL (입력부) */}
       <motion.div
-        className="flex-shrink-0 w-full lg:w-2/5 p-8 bg-white shadow-lg transition-all"
+        className="flex-shrink-0 w-full lg:w-1/2 p-8 bg-white shadow-lg transition-all"
         initial={{ width: '100%' }}
-        animate={{ width: policies.length ? '40%' : '100%' }}
-        transition={{ duration: 0.4 }}
+        animate={{ width: policies.length ? '50%' : '100%' }}
+        transition={{ duration: 0.3 }}
       >
         <div className="space-y-6">
           <h1 className="text-3xl font-bold">말로 만나는 복지 도우미</h1>
