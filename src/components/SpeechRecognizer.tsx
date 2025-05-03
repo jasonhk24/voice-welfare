@@ -7,16 +7,15 @@ export default function SpeechRecognizer() {
   const [text, setText] = useState('');
 
   const startRecognition = () => {
-    const SpeechRecognition =
-      (window as unknown as { webkitSpeechRecognition: new () => SpeechRecognition }).webkitSpeechRecognition ||
-      (window as unknown as { SpeechRecognition: new () => SpeechRecognition }).SpeechRecognition;
+    const SpeechRecognitionConstructor =
+      (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
 
-    if (!SpeechRecognition) {
+    if (!SpeechRecognitionConstructor) {
       alert('이 브라우저는 음성 인식을 지원하지 않습니다.');
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition: SpeechRecognition = new SpeechRecognitionConstructor();
     recognition.lang = 'ko-KR';
     recognition.interimResults = true;
 
@@ -41,7 +40,9 @@ export default function SpeechRecognizer() {
       >
         {listening ? '🎤 듣는 중...' : '🎙️ 마이크로 말하기'}
       </button>
-      <p className="mt-6 text-xl min-h-[4rem] border-t pt-4">{text || '여기에 인식된 텍스트가 표시됩니다.'}</p>
+      <p className="mt-6 text-xl min-h-[4rem] border-t pt-4">
+        {text || '여기에 인식된 텍스트가 표시됩니다.'}
+      </p>
     </div>
   );
 }
