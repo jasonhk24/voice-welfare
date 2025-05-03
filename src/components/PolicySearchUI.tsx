@@ -101,7 +101,7 @@ export default function PolicySearchUI() {
 
       {/* LEFT PANEL (입력부) */}
       <motion.div
-        className="flex-shrink-0 p-8 bg-white shadow-lg transition-all"
+        className="flex-shrink-0 w-full lg:w-2/5 p-8 bg-white shadow-lg transition-all"
         initial={{ width: '100%' }}
         animate={{ width: policies.length ? '40%' : '100%' }}
         transition={{ duration: 0.4 }}
@@ -183,7 +183,7 @@ export default function PolicySearchUI() {
         transition={{ duration: 0.5 }}
       >
         {policies.length > 0 && (
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="w-full space-y-6">
             {/* 뒤로가기 & 검색 결과 헤더 */}
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">검색 결과</h2>
