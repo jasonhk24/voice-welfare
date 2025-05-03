@@ -2,31 +2,41 @@
 
 import { useState } from 'react';
 
+// window에 webkitSpeechRecognition이 있는 걸 알려주는 선언
+declare global {
+  interface Window {
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
 export default function SpeechRecognizer() {
   const [listening, setListening] = useState(false);
   const [text, setText] = useState('');
 
   const startRecognition = () => {
-    const SpeechRecognitionConstructor =
-      (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    // SpeechRecognition 생성자를 window에서 꺼냅니다
+    const RecognitionClass =
+      window.webkitSpeechRecognition ||
+      window.SpeechRecognition;
 
-    if (!SpeechRecognitionConstructor) {
+    if (!RecognitionClass) {
       alert('이 브라우저는 음성 인식을 지원하지 않습니다.');
       return;
     }
 
-    const recognition: SpeechRecognition = new SpeechRecognitionConstructor();
+    const recognition = new RecognitionClass();
     recognition.lang = 'ko-KR';
     recognition.interimResults = true;
 
     recognition.onstart = () => setListening(true);
     recognition.onend = () => setListening(false);
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const result = Array.from(event.results)
+    recognition.onresult = (event) => {
+      // SpeechRecognitionEvent이 자동 유추되므로 타입 지정 불필요
+      const transcript = Array.from(event.results)
         .map((r) => r[0].transcript)
         .join('');
-      setText(result);
+      setText(transcript);
     };
 
     recognition.start();
