@@ -48,7 +48,7 @@ export default function SpeechToChat() {
       const { answer, error } = await res.json();
       if (error) setReply('Error: ' + error);
       else setReply(answer);
-    } catch (e) {
+    } catch  {
       setReply('네트워크 오류가 발생했습니다.');
     }
     setLoading(false);
