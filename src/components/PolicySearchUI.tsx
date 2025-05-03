@@ -80,8 +80,8 @@ export default function PolicySearchUI() {
         animate={{ width: policies.length ? '40%' : '100%' }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-3xl font-bold mb-6 flex items-center space-x-2">
-          <span>🎤</span><span>복지 정책 챗봇</span>
+        <h1 className="text-3xl font-bold mb-6">
+          말로 만나는 복지 도우미
         </h1>
 
         <div className="space-y-4">
