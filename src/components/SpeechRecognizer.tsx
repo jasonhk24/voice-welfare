@@ -2,22 +2,14 @@
 
 import { useState } from 'react';
 
-// window에 webkitSpeechRecognition이 있는 걸 알려주는 선언
-declare global {
-  interface Window {
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
-
 export default function SpeechRecognizer() {
   const [listening, setListening] = useState(false);
   const [text, setText] = useState('');
 
   const startRecognition = () => {
-    // SpeechRecognition 생성자를 window에서 꺼냅니다
-    const RecognitionClass =
-      window.webkitSpeechRecognition ||
-      window.SpeechRecognition;
+    // 👇 여기서만 any를 쓰도록 eslint 무시
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const RecognitionClass = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
 
     if (!RecognitionClass) {
       alert('이 브라우저는 음성 인식을 지원하지 않습니다.');
@@ -31,10 +23,9 @@ export default function SpeechRecognizer() {
     recognition.onstart = () => setListening(true);
     recognition.onend = () => setListening(false);
 
-    recognition.onresult = (event) => {
-      // SpeechRecognitionEvent이 자동 유추되므로 타입 지정 불필요
+    recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results)
-        .map((r) => r[0].transcript)
+        .map((r: any) => r[0].transcript)
         .join('');
       setText(transcript);
     };
