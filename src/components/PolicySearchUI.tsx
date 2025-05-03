@@ -39,7 +39,9 @@ export default function PolicySearchUI() {
       recog.onstart = () => setListening(true);
       recog.onend   = () => setListening(false);
       recog.onresult = (e: any) => {
-        const text = Array.from(e.results).map((r: any) => r[0].transcript).join('');
+        const text = Array.from(e.results)
+          .map((r: any) => r[0].transcript)
+          .join('');
         setTranscript(text);
         setPromptText(text);
       };
@@ -54,13 +56,28 @@ export default function PolicySearchUI() {
     setPromptText('');
   };
 
-  // 더미 검색
+  // 더미 검색 호출
   const doSearch = () => {
     if (!promptText.trim()) return alert('질문을 입력하거나 말해주세요.');
     setPolicies([
-      { id: '1', title: '장애인 연금 지원',   description: '장애인에게 매달 일정 금액을 지원하여 생활 안정에 도움을 줍니다.',     url: 'https://www.bokjiro.go.kr/disability-pension' },
-      { id: '2', title: '장애인 고용 지원',   description: '직업 훈련 및 고용 알선, 인센티브 제공으로 일자리 찾기를 지원합니다.',   url: 'https://www.bokjiro.go.kr/disability-employment' },
-      { id: '3', title: '장애인 복지 서비스', description: '의료·상담·재활 서비스 등을 제공하여 삶의 질을 향상시킵니다.', url: 'https://www.bokjiro.go.kr/disability-services' },
+      {
+        id: '1',
+        title: '장애인 연금 지원',
+        description: '장애인에게 매달 일정 금액을 지원하여 생활 안정에 도움을 줍니다.',
+        url: 'https://www.bokjiro.go.kr/disability-pension'
+      },
+      {
+        id: '2',
+        title: '장애인 고용 지원',
+        description: '직업 훈련 및 고용 알선, 인센티브 제공으로 일자리 찾기를 지원합니다.',
+        url: 'https://www.bokjiro.go.kr/disability-employment'
+      },
+      {
+        id: '3',
+        title: '장애인 복지 서비스',
+        description: '의료·상담·재활 서비스 등을 제공하여 삶의 질을 향상시킵니다.',
+        url: 'https://www.bokjiro.go.kr/disability-services'
+      },
     ]);
   };
 
@@ -71,37 +88,43 @@ export default function PolicySearchUI() {
   ];
 
   return (
-    <div className={`relative flex w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 ${sizeClasses[fontStep]} ${policies.length ? '' : 'justify-center items-center'}`}>
-      {/* 폰트 조절 (카드 뷰가 아닐 때만 표시) */}
+    <div
+      className={`
+        relative flex w-full min-h-screen
+        bg-gradient-to-br from-gray-50 to-gray-100
+        ${sizeClasses[fontStep]}
+        ${policies.length ? '' : 'justify-center items-center'}
+      `}
+    >
+      {/* 폰트 조절 (카드 뷰가 아닐 때만) */}
       {!policies.length && (
         <div className="absolute top-4 right-4 flex items-center space-x-2 z-20">
           <button
             aria-label="폰트 작게"
             onClick={() => setFontStep(s => Math.max(0, s - 1))}
             className="px-3 py-1 bg-white rounded shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            작게
-          </button>
+          >작게</button>
           <button
             aria-label="폰트 크게"
             onClick={() => setFontStep(s => Math.min(sizeClasses.length - 1, s + 1))}
             className="px-3 py-1 bg-white rounded shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            크게
-          </button>
+          >크게</button>
           <button
             aria-label="폰트 초기화"
             onClick={() => setFontStep(1)}
             className="px-3 py-1 bg-white rounded shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            초기화
-          </button>
+          >초기화</button>
         </div>
       )}
 
       {/* LEFT PANEL (입력부) */}
       <motion.div
-        className={`flex-shrink-0 p-8 bg-white shadow-lg transition-all ${policies.length ? 'w-full lg:w-1/2' : 'max-w-md w-full mx-auto'}`}
+        className={`
+          flex-shrink-0 p-8 bg-white shadow-lg transition-all
+          ${policies.length
+            ? 'w-full lg:w-1/2'
+            : 'max-w-md w-full mx-auto'}
+        `}
         initial={{ width: policies.length ? '50%' : 500 }}
         animate={{ width: policies.length ? '50%' : 500 }}
         transition={{ duration: 0.3 }}
@@ -121,9 +144,7 @@ export default function PolicySearchUI() {
               onClick={() => { setTranscript(''); setPromptText(''); }}
               aria-label="입력 지우기"
               className="py-3 px-4 bg-gray-300 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
-            >
-              지우기
-            </button>
+            >지우기</button>
           </div>
 
           <div>
@@ -145,9 +166,7 @@ export default function PolicySearchUI() {
                   <button
                     onClick={() => { setPromptText(ex); setTranscript(ex); }}
                     className="text-blue-600 underline focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {ex}
-                  </button>
+                  >{ex}</button>
                 </li>
               ))}
             </ul>
@@ -169,9 +188,7 @@ export default function PolicySearchUI() {
             onClick={doSearch}
             aria-label="검색 및 카드 표시"
             className="w-full py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition"
-          >
-            ✅ 확인 & 전송
-          </button>
+          >✅ 확인 & 전송</button>
         </div>
       </motion.div>
 
@@ -191,9 +208,7 @@ export default function PolicySearchUI() {
                 onClick={handleBack}
                 aria-label="뒤로가기"
                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
-              >
-                ← 뒤로가기
-              </button>
+              >← 뒤로가기</button>
             </div>
 
             {/* 정책 카드 그리드 */}
@@ -216,9 +231,7 @@ export default function PolicySearchUI() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    >
-                      자세히 보기 →
-                    </a>
+                    >자세히 보기 →</a>
                   </div>
                 </div>
               ))}
