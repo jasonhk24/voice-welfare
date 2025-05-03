@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-
 import { useState } from 'react';
 
 export default function SpeechRecognizer() {
@@ -7,10 +7,7 @@ export default function SpeechRecognizer() {
   const [text, setText] = useState('');
 
   const startRecognition = () => {
-    // 👇 여기서만 any를 쓰도록 eslint 무시
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const RecognitionClass = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-
     if (!RecognitionClass) {
       alert('이 브라우저는 음성 인식을 지원하지 않습니다.');
       return;
