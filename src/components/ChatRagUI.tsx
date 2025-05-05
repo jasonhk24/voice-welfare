@@ -14,7 +14,7 @@ export default function ChatRagUI() {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [promptText, setPromptText] = useState('');
-  const recogRef = useRef<any>(null);
+  const recogRef = useRef<SpeechRecognition | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -27,13 +27,13 @@ export default function ChatRagUI() {
 
   // 음성 인식 토글
   const toggleListen = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return alert('음성 인식을 지원하지 않습니다.');
 
     if (listening) {
-      recogRef.current.stop();
+      recogRef.current?.stop();
     } else {
-      const recog = new SR();
+      const recog = new SR() as SpeechRecognition;
       recogRef.current = recog;
       recog.lang = 'ko-KR';
       recog.interimResults = true;
