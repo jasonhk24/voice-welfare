@@ -39,11 +39,12 @@ interface Message {
   id: number;
   role: 'user' | 'assistant';
   content: string;
+  isPlaceholder?: boolean;
 }
 
 export default function ChatRagUI() {
-  const [fontLevel, setFontLevel] = useState(5);            // 1~10 단계
-  const fontScale = fontLevel / 5;                          // 폰트 스케일 계산
+  const [fontLevel, setFontLevel] = useState(5);      // 1~10 단계
+  const fontScale = fontLevel / 5;                    // 폰트 스케일 계산
   const [loading, setLoading] = useState(false);
 
   const [listening, setListening] = useState(false);
@@ -54,15 +55,14 @@ export default function ChatRagUI() {
   const [messages, setMessages] = useState<Message[]>([]);
 
   const dummyResponses = [
-    '🎯 장애인 연금 지원: 장애인에게 매달 일정 금액을 지원하여 생활 안정에 도움을 줍니다.\n자세히 보기: https://www.bokjiro.go.kr/disability-pension',
-    '🎯 장애인 고용 지원: 직업 훈련 및 고용 알선, 인센티브 제공으로 일자리 찾기를 지원합니다.\nhttps://www.bokjiro.go.kr/disability-employment',
-    '🎯 장애인 복지 서비스: 의료·상담·재활 서비스 등을 제공하여 삶의 질을 향상시킵니다.\nhttps://www.bokjiro.go.kr/disability-services',
+    '🎯 장애인 연금 지원: 장애인에게 매달 일정 금액을 지원하여 생활 안정에 도움을 줍니다.',
+    '🎯 장애인 고용 지원: 직업 훈련 및 고용 알선, 인센티브 제공으로 일자리 찾기를 지원합니다.',
+    '🎯 장애인 복지 서비스: 의료·상담·재활 서비스 등을 제공하여 삶의 질을 향상시킵니다.',
   ];
 
   const toggleListen = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return alert('음성 인식을 지원하지 않습니다.');
-
     if (listening) {
       recogRef.current?.stop();
     } else {
@@ -83,26 +83,32 @@ export default function ChatRagUI() {
   };
 
   const handleSend = () => {
-  if (!promptText.trim()) return alert('먼저 질문을 입력하거나 말해주세요.');
-  const userMsg: Message = {
-    id: messages.length,
-    role: 'user',
-    content: promptText.trim(),
+    if (!promptText.trim()) return alert('먼저 질문을 입력하거나 말해주세요.');
+    const userMsg: Message = {
+      id: Date.now(),
+      role: 'user',
+      content: promptText.trim(),
+    };
+    const placeholderMsg: Message = {
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: '생각중입니다...',
+      isPlaceholder: true,
+    };
+    setMessages([userMsg, placeholderMsg]);
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      const botMsgs = dummyResponses.map((text, i) => ({
+        id: Date.now() + 2 + i,
+        role: 'assistant' as const,
+        content: text,
+      }));
+      setMessages([userMsg, ...botMsgs]);
+    }, 2000);
+    setTranscript('');
+    setPromptText('');
   };
-  setMessages(prev => [...prev, userMsg]);
-  setLoading(true);
-  setTimeout(() => {
-    setLoading(false);
-    const botMsgs = dummyResponses.map((text, i) => ({
-      id: messages.length + 1 + i,
-      role: 'assistant' as const,
-      content: text,
-    }));
-    setMessages(prev => [...prev, ...botMsgs]);
-  }, 3000);
-  setTranscript('');
-  setPromptText('');
-};
 
   const examples = [
     '장애인 지원 정책을 알려줘.',
@@ -150,7 +156,7 @@ export default function ChatRagUI() {
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <h1 className="text-3xl font-bold">🎙️ 말로 만나는 복지 도우미</h1>
+        <h1 className="w-full text-center text-4xl font-bold">🎙️ 말로 만나는 복지 도우미</h1>
         <div className="space-y-4">
           <div className="flex space-x-2">
             <button
@@ -214,42 +220,41 @@ export default function ChatRagUI() {
 
       {/* RIGHT PANEL */}
       <motion.section
-          role="region"
-          aria-label="응답 패널"
-          className="flex-1 p-6 overflow-y-auto space-y-4 bg-white rounded-3xl mr-4"
-          initial={{ x: 50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          {loading && messages.length === 1 && (
-            <div className="flex flex-col items-center justify-center h-full">
-              <p className="text-2xl font-semibold mb-4">조건에 맞는 복지 검색중...</p>
-              <div
-                className="w-8 h-8 border-4 border-t-4 border-gray-300 rounded-full animate-spin"
-                role="status"
-                aria-label="로딩 중"
-              />
-            </div>
-          )}
-          {!loading && messages.length === 1 && (
-            <article className="max-w-2xl p-4 rounded-lg mr-auto bg-gray-100">
-              <span className="animate-pulse">생각중입니다...</span>
-            </article>
-          )}
-          {!loading && messages.length > 1 && messages.map(msg => (
+        role="region"
+        aria-label="응답 패널"
+        className="flex-1 p-6 overflow-y-auto space-y-4 bg-white rounded-3xl mr-4"
+        initial={{ x: 50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+      >
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <p className="text-2xl font-semibold mb-4">조건에 맞는 복지 검색중...</p>
+            <div
+              className="w-8 h-8 border-4 border-t-blue-500 rounded-full animate-spin"
+              role="status"
+              aria-label="로딩 중"
+            />
+          </div>
+        ) : (
+          messages.map(msg => (
             <article
               key={msg.id}
               className={`max-w-2xl p-4 rounded-lg ${
                 msg.role === 'user'
-                  ? 'ml-auto bg-blue-100 text-right'
-                  : 'mr-auto bg-gray-100 text-left'
+                  ? 'mr-auto bg-blue-100 text-left'
+                  : 'ml-auto bg-gray-200 text-right'
               }`}
               tabIndex={0}
             >
-              <pre className="whitespace-pre-wrap">{msg.content}</pre>
+              <pre className="whitespace-pre-wrap">
+                {msg.content}
+                {msg.isPlaceholder && <span className="animate-pulse ml-2">💭</span>}
+              </pre>
             </article>
-          ))}
-        </motion.section>
-        </main>
+          ))
+        )}
+      </motion.section>
+    </main>
   );
 }
