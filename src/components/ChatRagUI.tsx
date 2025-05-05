@@ -1,4 +1,34 @@
 // src/components/ChatRagUI.tsx
+// Web Speech API 타입 선언
+type SpeechRecognition = {
+  lang: string
+  interimResults: boolean
+  onstart: () => void
+  onresult: (e: SpeechRecognitionEvent) => void
+  onend: () => void
+  start(): void
+  stop(): void
+}
+
+interface SpeechRecognitionEvent {
+  results: SpeechRecognitionResultList
+}
+
+type SpeechRecognitionResultList = SpeechRecognitionResult[]
+
+interface SpeechRecognitionResult {
+  0: { transcript: string; confidence: number }
+  isFinal: boolean
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: { new(): SpeechRecognition }
+    webkitSpeechRecognition: { new(): SpeechRecognition }
+  }
+}
+// —————————————————————————————————————————
+
 'use client';
 
 import { useState, useRef } from 'react';
