@@ -83,29 +83,26 @@ export default function ChatRagUI() {
   };
 
   const handleSend = () => {
-    if (!promptText.trim()) return alert('먼저 질문을 입력하거나 말해주세요.');
-    const userMsg: Message = {
-      id: messages.length,
-      role: 'user',
-      content: promptText.trim(),
-    };
-    setMessages(prev => [...prev, userMsg]);
-
+  if (!promptText.trim()) return alert('먼저 질문을 입력하거나 말해주세요.');
+  const userMsg: Message = {
+    id: messages.length,
+    role: 'user',
+    content: promptText.trim(),
+  };
+  setMessages(prev => [...prev, userMsg]);
+  setLoading(true);
+  setTimeout(() => {
+    setLoading(false);
     const botMsgs = dummyResponses.map((text, i) => ({
       id: messages.length + 1 + i,
       role: 'assistant' as const,
       content: text,
     }));
-
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setMessages(prev => [...prev, ...botMsgs]);
-    }, 3000);
-
-    setTranscript('');
-    setPromptText('');
-  };
+    setMessages(prev => [...prev, ...botMsgs]);
+  }, 3000);
+  setTranscript('');
+  setPromptText('');
+};
 
   const examples = [
     '장애인 지원 정책을 알려줘.',
@@ -217,33 +214,42 @@ export default function ChatRagUI() {
 
       {/* RIGHT PANEL */}
       <motion.section
-        role="region"
-        aria-label="응답 패널"
-        aria-live="polite"
-        className="flex-1 p-6 overflow-y-auto space-y-4 bg-white rounded-3xl mr-4"
-        initial={{ x: 50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-2xl font-semibold mb-4">조건에 맞는 복지 검색중...</p>
-            <div className="w-8 h-8 border-4 border-t-4 border-gray-300 rounded-full animate-spin" role="status" aria-label="로딩 중" />
-          </div>
-        ) : messages.length === 0 ? (
-          <p className="text-center text-gray-500 mt-20">여기에 대화가 표시됩니다.</p>
-        ) : (
-          messages.map(msg => (
+          role="region"
+          aria-label="응답 패널"
+          className="flex-1 p-6 overflow-y-auto space-y-4 bg-white rounded-3xl mr-4"
+          initial={{ x: 50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          {loading && messages.length === 1 && (
+            <div className="flex flex-col items-center justify-center h-full">
+              <p className="text-2xl font-semibold mb-4">조건에 맞는 복지 검색중...</p>
+              <div
+                className="w-8 h-8 border-4 border-t-4 border-gray-300 rounded-full animate-spin"
+                role="status"
+                aria-label="로딩 중"
+              />
+            </div>
+          )}
+          {!loading && messages.length === 1 && (
+            <article className="max-w-2xl p-4 rounded-lg mr-auto bg-gray-100">
+              <span className="animate-pulse">생각중입니다...</span>
+            </article>
+          )}
+          {!loading && messages.length > 1 && messages.map(msg => (
             <article
               key={msg.id}
-              className={`max-w-2xl p-4 rounded-lg ${msg.role === 'user' ? 'ml-auto bg-blue-100 text-right' : 'mr-auto bg-gray-100 text-left'}`}
+              className={`max-w-2xl p-4 rounded-lg ${
+                msg.role === 'user'
+                  ? 'ml-auto bg-blue-100 text-right'
+                  : 'mr-auto bg-gray-100 text-left'
+              }`}
               tabIndex={0}
             >
               <pre className="whitespace-pre-wrap">{msg.content}</pre>
             </article>
-          ))
-        )}
-      </motion.section>
-    </main>
+          ))}
+        </motion.section>
+        </main>
   );
 }
