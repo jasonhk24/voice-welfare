@@ -1,4 +1,7 @@
 // src/components/ChatRagUI.tsx
+const [fontLevel, setFontLevel] = useState(5)        // 1~10 단계
+const fontScale = fontLevel / 5                      // 5단계=1배, 10단계=2배, 1단계=0.2배
+
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 // Web Speech API 타입 선언
 type SpeechRecognition = {
@@ -116,19 +119,34 @@ export default function ChatRagUI() {
 
   return (
     <div
-      className={`
-        flex w-full h-screen
-        bg-gradient-to-br from-pink-50 to-green-50
-        overflow-hidden
-      `}
+  style={{ fontSize: `${fontScale}rem` }}
+  className="relative flex w-full h-screen bg-gradient-to-br from-yellow-100 to-yellow-50 overflow-hidden"
+>
+  {/* 폰트 크기 조절 버튼 */}
+  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+    <button
+      onClick={() => setFontLevel(l => Math.max(1, l - 1))}
+      className="px-3 py-1 bg-white rounded-lg shadow"
     >
+      A-
+    </button>
+    <button
+      onClick={() => setFontLevel(5)}
+      className="px-3 py-1 bg-white rounded-lg shadow"
+    >
+      Reset
+    </button>
+    <button
+      onClick={() => setFontLevel(l => Math.min(10, l + 1)))}
+      className="px-3 py-1 bg-white rounded-lg shadow"
+    >
+      A+
+    </button>
+  </div>
+
       {/* LEFT PANEL */}
       <motion.div
-        className="
-          flex-shrink-0 p-8 bg-white/90 shadow-lg
-          w-full lg:w-1/3 xl:w-1/4
-          flex flex-col justify-between
-        "
+        className="flex-shrink-0 p-6 bg-white rounded-3xl shadow-lg w-full lg:w-1/3 xl:w-1/4 flex flex-col justify-between ml-4"
         initial={{ x: -50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
@@ -201,10 +219,7 @@ export default function ChatRagUI() {
 
       {/* RIGHT PANEL (채팅창) */}
       <motion.div
-        className="
-          flex-1 p-8 overflow-y-auto
-          space-y-4 bg-white/80
-        "
+        className="flex-1 p-6 overflow-y-auto space-y-4 bg-white/80 rounded-3xl mr-4"
         initial={{ x: 50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
