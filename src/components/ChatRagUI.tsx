@@ -1,4 +1,5 @@
 // src/components/ChatRagUI.tsx
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 // Web Speech API 타입 선언
 type SpeechRecognition = {
   lang: string
