@@ -43,7 +43,8 @@ interface Message {
 
 export default function ChatRagUI() {
   const [fontLevel, setFontLevel] = useState(5);            // 1~10 단계
-  const fontScale = fontLevel / 5;                          // 5단계=1배, 10단계=2배, 1단계=0.2배
+  const fontScale = fontLevel / 5;                          // 폰트 스케일 계산
+  const [loading, setLoading] = useState(false);
 
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -73,9 +74,7 @@ export default function ChatRagUI() {
       recog.onend = () => setListening(false);
       recog.onresult = (e: SpeechRecognitionEvent) => {
         const results = Array.from(e.results as SpeechRecognitionResultList);
-        const text = results
-          .map((r: SpeechRecognitionResult) => r[0].transcript)
-          .join('');
+        const text = results.map(r => r[0].transcript).join('');
         setTranscript(text);
         setPromptText(text);
       };
@@ -84,7 +83,7 @@ export default function ChatRagUI() {
   };
 
   const handleSend = () => {
-    if (!promptText.trim()) return alert('먼저 질문을 말하거나 입력해주세요.');
+    if (!promptText.trim()) return alert('먼저 질문을 입력하거나 말해주세요.');
     const userMsg: Message = {
       id: messages.length,
       role: 'user',
@@ -97,9 +96,12 @@ export default function ChatRagUI() {
       role: 'assistant' as const,
       content: text,
     }));
+
+    setLoading(true);
     setTimeout(() => {
+      setLoading(false);
       setMessages(prev => [...prev, ...botMsgs]);
-    }, 500);
+    }, 3000);
 
     setTranscript('');
     setPromptText('');
@@ -112,34 +114,40 @@ export default function ChatRagUI() {
   ];
 
   return (
-    <div
+    <main
+      role="main"
       style={{ fontSize: `${fontScale}rem` }}
-      className="relative flex w-full h-screen bg-gradient-to-br from-yellow-100 to-yellow-50 overflow-hidden"
+      className="relative flex w-full h-screen gap-8 py-8 px-4 bg-gradient-to-br from-yellow-100 to-yellow-50 overflow-auto"
     >
-      {/* 폰트 크기 조절 버튼 */}
+      {/* 폰트 크기 조절 */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
         <button
           onClick={() => setFontLevel(l => Math.max(1, l - 1))}
-          className="px-3 py-1 bg-white rounded-lg shadow"
+          className="px-4 py-1 min-h-[48px] bg-white rounded-lg shadow focus:outline-none focus:ring-2"
+          aria-label="글자 작게"
         >
-          A-
+          작게
         </button>
         <button
           onClick={() => setFontLevel(5)}
-          className="px-3 py-1 bg-white rounded-lg shadow"
+          className="px-4 py-1 min-h-[48px] bg-white rounded-lg shadow focus:outline-none focus:ring-2"
+          aria-label="글자 원래대로"
         >
-          Reset
+          원래대로
         </button>
         <button
           onClick={() => setFontLevel(l => Math.min(10, l + 1))}
-          className="px-3 py-1 bg-white rounded-lg shadow"
+          className="px-4 py-1 min-h-[48px] bg-white rounded-lg shadow focus:outline-none focus:ring-2"
+          aria-label="글자 크게"
         >
-          A+
+          크게
         </button>
       </div>
 
       {/* LEFT PANEL */}
       <motion.div
+        role="region"
+        aria-label="입력 패널"
         className="flex-shrink-0 p-6 bg-white rounded-3xl shadow-lg w-full lg:w-1/3 xl:w-1/4 flex flex-col justify-between ml-4"
         initial={{ x: -50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
@@ -151,13 +159,13 @@ export default function ChatRagUI() {
             <button
               onClick={toggleListen}
               aria-label={listening ? '음성 인식 중지' : '음성 인식 시작'}
-              className="flex-1 py-2 bg-blue-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="flex-1 min-h-[48px] py-2 bg-blue-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
             >
               {listening ? '■ 중지' : '🎤 말하기'}
             </button>
             <button
               onClick={() => { setTranscript(''); setPromptText(''); }}
-              className="py-2 px-4 bg-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="min-h-[48px] py-2 px-4 bg-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
             >
               지우기
             </button>
@@ -167,7 +175,7 @@ export default function ChatRagUI() {
             <textarea
               id="transcript"
               rows={3}
-              className="w-full border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full min-h-[48px] border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               value={transcript}
               onChange={e => { setTranscript(e.target.value); setPromptText(e.target.value); }}
             />
@@ -192,7 +200,7 @@ export default function ChatRagUI() {
             <input
               id="prompt"
               type="text"
-              className="w-full border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full min-h-[48px] border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="질문을 입력하거나 수정하세요."
               value={promptText}
               onChange={e => setPromptText(e.target.value)}
@@ -201,39 +209,41 @@ export default function ChatRagUI() {
         </div>
         <button
           onClick={handleSend}
-          className="mt-4 py-3 bg-emerald-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          className="mt-4 min-h-[48px] py-3 bg-emerald-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
         >
           ✅ 확인 & 전송
         </button>
       </motion.div>
 
-      {/* RIGHT PANEL (채팅창) */}
-      <motion.div
-        className="flex-1 p-6 overflow-y-auto space-y-4 bg-white/80 rounded-3xl mr-4"
+      {/* RIGHT PANEL */}
+      <motion.section
+        role="region"
+        aria-label="응답 패널"
+        aria-live="polite"
+        className="flex-1 p-6 overflow-y-auto space-y-4 bg-white rounded-3xl mr-4"
         initial={{ x: 50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        {messages.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <p className="text-2xl font-semibold mb-4">조건에 맞는 복지 검색중...</p>
+            <div className="w-8 h-8 border-4 border-t-4 border-gray-300 rounded-full animate-spin" role="status" aria-label="로딩 중" />
+          </div>
+        ) : messages.length === 0 ? (
           <p className="text-center text-gray-500 mt-20">여기에 대화가 표시됩니다.</p>
         ) : (
           messages.map(msg => (
-            <div
+            <article
               key={msg.id}
-              className={`max-w-2xl p-4 rounded-lg ${
-                msg.role === 'user'
-                  ? 'ml-auto bg-blue-100 text-right'
-                  : 'mr-auto bg-gray-100 text-left'
-              }`}
+              className={`max-w-2xl p-4 rounded-lg ${msg.role === 'user' ? 'ml-auto bg-blue-100 text-right' : 'mr-auto bg-gray-100 text-left'}`}
               tabIndex={0}
-              role="article"
-              aria-label={msg.role === 'user' ? '사용자 메시지' : '시스템 메시지'}
             >
               <pre className="whitespace-pre-wrap">{msg.content}</pre>
-            </div>
+            </article>
           ))
         )}
-      </motion.div>
-    </div>
+      </motion.section>
+    </main>
   );
 }
