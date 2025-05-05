@@ -39,14 +39,13 @@ export default function ChatRagUI() {
       recog.interimResults = true;
       recog.onstart = () => setListening(true);
       recog.onend   = () => setListening(false);
-      recog.onresult = (e: SpeechRecognitionEvent) =>
-          // SpeechRecognitionEvent.results는 SpeechRecognitionResultList 타입
-          const results = Array.from(e.results as SpeechRecognitionResultList);
-          const text = results
-            .map((r: SpeechRecognitionResult) => r[0].transcript)
-            .join('');
-          setTranscript(text);
-          setPromptText(text);
+      recog.onresult = (e: SpeechRecognitionEvent) => {
+        const results = Array.from(e.results as SpeechRecognitionResultList);
+        const text = results
+          .map((r: SpeechRecognitionResult) => r[0].transcript)
+          .join('');
+        setTranscript(text);
+        setPromptText(text);
       };
       recog.start();
     }
