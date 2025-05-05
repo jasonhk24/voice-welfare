@@ -1,6 +1,7 @@
 // src/app/page.tsx
-import PolicySearchUI from '../components/PolicySearchUI';
+import ChatRagUI from '../components/ChatRagUI';
 
 export default function Home() {
-  return <PolicySearchUI />;
+  return <ChatRagUI />;
 }
+
