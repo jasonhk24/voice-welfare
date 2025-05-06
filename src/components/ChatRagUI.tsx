@@ -83,29 +83,33 @@ export default function ChatRagUI() {
   };
 
   const handleSend = () => {
-    if (!promptText.trim()) return alert('먼저 질문을 입력하거나 말해주세요.');
-    const userMsg: Message = {
-      id: Date.now(),
-      role: 'user',
-      content: promptText.trim(),
+      if (!promptText.trim()) return alert('먼저 질문을 입력하거나 말해주세요.');
+      const userMsg: Message = {
+        id: Date.now(),
+        role: 'user',
+        content: promptText.trim(),
+      };
+      const thinkingMsg: Message = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: '생각중입니다...',
+        isPlaceholder: true,
+      };
+      setMessages(prev => [...prev, userMsg, thinkingMsg]);
+      setTranscript('');
+      setPromptText('');
+      setTimeout(() => {
+        const botMsgs = dummyResponses.map((text, i) => ({
+          id: Date.now() + 2 + i,
+          role: 'assistant' as const,
+          content: text,
+        }));
+        setMessages(prev => {
+          const filtered = prev.filter(m => !m.isPlaceholder);
+          return [...filtered, ...botMsgs];
+        });
+      }, 2000);
     };
-    const placeholderMsg: Message = {
-      id: Date.now() + 1,
-      role: 'assistant',
-      content: '생각중입니다...',
-      isPlaceholder: true,
-    };
-    setMessages([userMsg, placeholderMsg]);
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      const botMsgs = dummyResponses.map((text, i) => ({
-        id: Date.now() + 2 + i,
-        role: 'assistant' as const,
-        content: text,
-      }));
-      setMessages([userMsg, ...botMsgs]);
-    }, 2000);
     setTranscript('');
     setPromptText('');
   };
@@ -237,22 +241,22 @@ export default function ChatRagUI() {
             />
           </div>
         ) : (
-          messages.map(msg => (
-            <article
-              key={msg.id}
-              className={`max-w-2xl p-4 rounded-lg ${
-                msg.role === 'user'
-                  ? 'mr-auto bg-blue-100 text-left'
-                  : 'ml-auto bg-gray-200 text-right'
-              }`}
-              tabIndex={0}
-            >
-              <pre className="whitespace-pre-wrap">
+          {messages.map(msg => (
+              <article
+                key={msg.id}
+                className={`max-w-2xl p-4 rounded-lg ${
+                  msg.role === 'user'
+                    ? 'mr-auto bg-gray-100 text-left'
+                    : 'ml-auto bg-blue-100 text-right'
+                }`}
+                tabIndex={0}
+                role="article"
+                aria-label={msg.role === 'user' ? '사용자 메시지' : '답변 메시지'}
+              >
                 {msg.content}
                 {msg.isPlaceholder && <span className="animate-pulse ml-2">💭</span>}
-              </pre>
-            </article>
-          ))
+              </article>
+            ))}
         )}
       </motion.section>
     </main>
