@@ -4,28 +4,49 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Web Speech API 타입 선언 (기존과 동일)
-// ... (이전 코드와 동일하게 유지)
+// ... (기존 타입 선언들 SpeechRecognition, Message, Theme 등은 동일하게 유지)
 type SpeechRecognition = {
   lang: string;
   interimResults: boolean;
+  continuous: boolean; // 연속적인 결과 처리를 위해 추가 (명령어 인식에 유용할 수 있음)
   onstart: () => void;
   onresult: (e: SpeechRecognitionEvent) => void;
   onend: () => void;
+  onerror: (e: SpeechRecognitionErrorEvent) => void; // onerror 타입 명시
+  onnomatch: () => void; // onnomatch 추가
   start(): void;
   stop(): void;
 };
 
+// SpeechRecognitionErrorEvent 타입 추가
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
 interface SpeechRecognitionEvent {
   results: SpeechRecognitionResultList;
+  resultIndex: number; // 현재 결과의 인덱스
 }
 
-type SpeechRecognitionResultList = SpeechRecognitionResult[];
+type SpeechRecognitionResultList = {
+  [index: number]: SpeechRecognitionResult;
+  length: number;
+  item: (index: number) => SpeechRecognitionResult;
+};
 
 interface SpeechRecognitionResult {
-  0: { transcript: string; confidence: number };
+  [index: number]: SpeechRecognitionAlternative;
   isFinal: boolean;
+  length: number;
+  item: (index: number) => SpeechRecognitionAlternative;
 }
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
 
 declare global {
   interface Window {
@@ -33,7 +54,6 @@ declare global {
     webkitSpeechRecognition: { new (): SpeechRecognition };
   }
 }
-
 
 interface Message {
   id: number;
@@ -47,12 +67,14 @@ interface Message {
 
 type Theme = "light" | "dark" | "high-contrast";
 
+
 export default function ChatRagUI() {
   const [fontLevel, setFontLevel] = useState(5);
   const fontScale = fontLevel / 5;
   const [theme, setTheme] = useState<Theme>("light");
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [finalTranscript, setFinalTranscript] = useState(""); // 최종 확정된 음성인식 결과
   const [promptText, setPromptText] = useState("");
   const recogRef = useRef<SpeechRecognition | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -60,6 +82,11 @@ export default function ChatRagUI() {
   const [expandedStates, setExpandedStates] = useState<Record<number, boolean>>({});
   const [history, setHistory] = useState<string[]>([]);
 
+  // 음성 인식 관련 상태 메시지 및 오류 메시지
+  const [speechStatus, setSpeechStatus] = useState<string>("");
+  const [micError, setMicError] = useState<string>("");
+
+  // ... (dummyResponses, useEffects for theme, examples 등 기존 로직 유지)
   const dummyResponses: Omit<Message, "id" | "role">[] = [
     {
       content: "장애인 연금은 경제적으로 어려움을 겪는 장애인의 생활 안정을 돕기 위한 제도입니다. 소득과 재산 기준을 충족하는 경우 매월 일정 금액을 지원받을 수 있어요.",
@@ -87,57 +114,103 @@ export default function ChatRagUI() {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("light", "dark", "high-contrast"); // 기존 테마 클래스 모두 제거
-    root.classList.add(theme); // 현재 테마 클래스 추가
+    root.classList.remove("light", "dark", "high-contrast");
+    root.classList.add(theme);
     localStorage.setItem("chatTheme", theme);
   }, [theme]);
+
 
   const toggleListen = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
-      alert("음성 인식을 지원하지 않습니다.");
+      setMicError("음성 인식을 지원하지 않는 브라우저입니다.");
+      alert("음성 인식을 지원하지 않는 브라우저입니다.");
       return;
     }
-    if (listening) {
-      recogRef.current?.stop();
+
+    if (listening && recogRef.current) {
+      recogRef.current.stop();
+      // setListening(false); // onend에서 처리
+      // setSpeechStatus(""); // onend에서 처리
     } else {
       const recog = new SR() as SpeechRecognition;
       recogRef.current = recog;
       recog.lang = "ko-KR";
-      recog.interimResults = true;
-      recog.onstart = () => setListening(true);
+      recog.interimResults = true; // 중간 결과 받음
+      // recog.continuous = true; // 연속 인식 (필요에 따라 사용, 명령어 처리에 유리할 수 있음)
+
+      recog.onstart = () => {
+        setListening(true);
+        setSpeechStatus("듣고 있어요... 말씀해주세요.");
+        setMicError("");
+        setTranscript(""); // 이전 인식 내용 초기화
+        setFinalTranscript(""); // 최종 확정된 내용도 초기화
+      };
+
       recog.onend = () => {
         setListening(false);
-        if (transcript.trim()) {
+        setSpeechStatus("");
+        // 최종 인식된 텍스트를 promptText로 설정
+        if (finalTranscript.trim()) {
+          setPromptText(finalTranscript.trim());
+        } else if (transcript.trim() && !finalTranscript.trim()) {
+            // continuous가 false일 때, 마지막 interim이 final처럼 동작하는 경우 대비
             setPromptText(transcript.trim());
         }
+        // recogRef.current = null; // 필요시 해제
       };
-      recog.onresult = (e: SpeechRecognitionEvent) => {
-        const results = Array.from(e.results as SpeechRecognitionResultList);
-        const finalText = results
-            .filter(r => r.isFinal)
-            .map(r => r[0].transcript)
-            .join('');
-        const interimText = results
-            .filter(r => !r.isFinal)
-            .map(r => r[0].transcript)
-            .join('');
 
-        if(finalText){
-            setTranscript(prev => prev + finalText);
-            setPromptText(prev => prev + finalText);
-        } else {
-            setTranscript(prevTranscript => {
-                 const lastWordBoundary = prevTranscript.lastIndexOf(' ');
-                 const base = lastWordBoundary === -1 ? '' : prevTranscript.substring(0, lastWordBoundary + 1);
-                 return base + interimText;
-            });
+      recog.onresult = (event: SpeechRecognitionEvent) => {
+        let interimTranscript = "";
+        let currentFinalTranscript = finalTranscript; // 기존 final transcript 유지
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            currentFinalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
         }
+        setFinalTranscript(currentFinalTranscript); // 확정된 부분 업데이트
+        setTranscript(currentFinalTranscript + interimTranscript); // 전체 보여주기용 (확정 + 중간)
+        setSpeechStatus("음성 인식 중..."); // 상태 업데이트
       };
-      recog.start();
+
+      recog.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error("Speech recognition error", event.error, event.message);
+        let errorMessage = "음성 인식 중 오류가 발생했습니다.";
+        if (event.error === "no-speech") {
+          errorMessage = "음성이 감지되지 않았습니다. 마이크를 확인해주세요.";
+        } else if (event.error === "audio-capture") {
+          errorMessage = "마이크 접근에 문제가 발생했습니다. 마이크 설정을 확인해주세요.";
+        } else if (event.error === "not-allowed") {
+          errorMessage = "마이크 사용 권한이 차단되었습니다. 브라우저 설정을 확인해주세요.";
+        } else if (event.error === "network") {
+            errorMessage = "네트워크 오류로 음성 인식을 사용할 수 없습니다.";
+        }
+        setMicError(errorMessage);
+        setListening(false);
+        setSpeechStatus("");
+      };
+
+      recog.onnomatch = () => {
+        setSpeechStatus("음성을 인식하지 못했어요. 다시 말씀해주시겠어요?");
+      };
+
+      try {
+        setPromptText(""); // 음성 입력 시작 시 최종 질문 칸 비우기 (선택 사항)
+        recog.start();
+      } catch (e) {
+        console.error("Error starting speech recognition:", e);
+        setMicError("음성 인식을 시작할 수 없습니다.");
+        setListening(false);
+        setSpeechStatus("");
+      }
     }
   };
 
+  // handleSend, examples, toggleViewMode, toggleExpand, getButtonClass, getInputClass 기존 로직 유지
+  // ... (기존 handleSend 및 기타 함수들)
   const handleSend = useCallback(() => {
     const trimmedPrompt = promptText.trim();
     if (!trimmedPrompt) {
@@ -163,7 +236,11 @@ export default function ChatRagUI() {
       return newHistory.slice(0, 3);
     });
     setTranscript("");
+    setFinalTranscript("");
     setPromptText("");
+    setMicError("");
+    setSpeechStatus("");
+
     setTimeout(() => {
       const randomDummy = dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
       const botMsg: Message = {
@@ -181,7 +258,7 @@ export default function ChatRagUI() {
         return [...filtered, botMsg];
       });
     }, 2000);
-  }, [promptText, dummyResponses]); // dummyResponses 추가
+  }, [promptText, dummyResponses]);
 
   const examples = [
     "장애인 연금 지원 알려줘.",
@@ -214,16 +291,18 @@ export default function ChatRagUI() {
      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600
      hc:border-2 hc:border-black hc:text-black hc:bg-white`;
 
+
   return (
     <main
       role="main"
       style={{ fontSize: `${fontScale}rem` }}
       className={`relative flex flex-col lg:flex-row w-full min-h-screen h-full gap-4 lg:gap-8 py-4 px-2 md:px-4
                  text-gray-900 transition-colors duration-150 ease-in-out overflow-y-auto
-                 bg-yellow-50  /* 라이트 모드: 파스텔톤 노란색 배경 */
-                 dark:bg-gray-900 dark:text-gray-100 /* 다크 모드 배경 및 텍스트 */
-                 hc:bg-white hc:text-black /* 고대비 모드 배경 및 텍스트 */`}
+                 bg-yellow-50
+                 dark:bg-gray-900 dark:text-gray-100
+                 hc:bg-white hc:text-black`}
     >
+      {/* ... (상단 컨트롤 바 기존과 동일) ... */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20 p-2 bg-white/80 dark:bg-gray-800/80 hc:bg-white/80 hc:border hc:border-black backdrop-blur-sm rounded-lg shadow-md">
         <button onClick={() => setFontLevel((l) => Math.max(1, l - 1))} className={getButtonClass(false) + " hc:text-black"} aria-label="글자 작게"> 작게 </button>
         <button onClick={() => setFontLevel(5)} className={getButtonClass(false) + " hc:text-black"} aria-label="글자 원래대로"> 보통 </button>
@@ -239,9 +318,9 @@ export default function ChatRagUI() {
         role="region"
         aria-label="입력 패널"
         className={`flex-shrink-0 p-4 md:p-6 rounded-2xl shadow-xl w-full lg:w-1/3 xl:w-1/4 flex flex-col justify-between mt-20 lg:mt-4
-                    bg-white /* 라이트 모드: 패널 배경 흰색 */
-                    dark:bg-gray-800 /* 다크 모드: 패널 배경 */
-                    hc:border-2 hc:border-black hc:bg-white /* 고대비 모드: 패널 */`}
+                    bg-white
+                    dark:bg-gray-800
+                    hc:border-2 hc:border-black hc:bg-white`}
         initial={{ x: -50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
@@ -251,45 +330,78 @@ export default function ChatRagUI() {
             🎙️ 말로 만나는 복지 도우미
             </h1>
             <div className="space-y-4">
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 items-center"> {/* items-center 추가 */}
                 <button
-                onClick={toggleListen}
-                aria-label={listening ? "음성 인식 중지" : "음성 인식 시작"}
-                className={`flex-1 min-h-[52px] py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-150 ease-in-out font-semibold
-                            ${listening ?
-                                'bg-red-500 hover:bg-red-600 dark:bg-red-700 dark:hover:bg-red-800 text-white ring-red-400 dark:ring-red-500 hc:bg-red-500 hc:text-white hc:border-black' :
-                                'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white ring-blue-400 dark:ring-blue-500 hc:bg-blue-600 hc:text-white hc:border-black'
-                            }`}
+                  onClick={toggleListen}
+                  aria-label={listening ? "음성 인식 중지" : "음성 인식 시작"}
+                  className={`flex-1 min-h-[52px] py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all duration-150 ease-in-out font-semibold relative overflow-hidden
+                              ${listening
+                                  ? 'bg-red-500 hover:bg-red-600 dark:bg-red-700 dark:hover:bg-red-800 text-white ring-red-400 dark:ring-red-500 hc:bg-red-500 hc:text-white hc:border-black'
+                                  : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white ring-blue-400 dark:ring-blue-500 hc:bg-blue-600 hc:text-white hc:border-black'
+                              }`}
                 >
-                {listening ? "■ 중지" : "🎤 말하기"}
+                  {/* 말하기 버튼 시각적 피드백 */}
+                  {listening && (
+                    <motion.div
+                      className="absolute inset-0 bg-white opacity-20"
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                  )}
+                  {listening ? "■ 중지" : "🎤 말하기"}
                 </button>
                 <button
-                onClick={() => {
-                    setTranscript("");
-                    setPromptText("");
-                }}
-                className={getButtonClass(false) + ` font-semibold hc:text-black`} /* 기본 버튼 스타일 상속 및 hc 텍스트 색상 명시 */
-                aria-label="입력 내용 지우기"
+                  onClick={() => {
+                      setTranscript("");
+                      setFinalTranscript("");
+                      setPromptText("");
+                      setMicError("");
+                      setSpeechStatus("");
+                      if (listening && recogRef.current) { // 듣고 있을 때 지우기를 누르면 중지도 함께
+                        recogRef.current.stop();
+                      }
+                  }}
+                  className={getButtonClass(false) + ` font-semibold hc:text-black`}
+                  aria-label="입력 내용 지우기"
                 >
-                지우기
+                  지우기
                 </button>
             </div>
+
+            {/* 음성 인식 상태 및 오류 메시지 표시 */}
+            {(speechStatus || micError) && (
+              <div className={`p-2 rounded-md text-sm text-center transition-opacity duration-300
+                ${micError ?
+                    'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-200 hc:bg-red-100 hc:text-red-700 hc:border hc:border-red-700' :
+                    'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300 hc:bg-blue-50 hc:text-blue-700 hc:border hc:border-blue-700'
+                }`}
+                role="status" // 오류 시에는 role="alert"도 고려
+                aria-live="polite"
+              >
+                {micError || speechStatus}
+              </div>
+            )}
+
             <div>
-                <label htmlFor="transcript" className="font-medium text-gray-700 dark:text-gray-300 hc:text-black">
-                📝 인식된 텍스트 (실시간)
+                <label htmlFor="transcriptArea" className="font-medium text-gray-700 dark:text-gray-300 hc:text-black">
+                📝 인식된 텍스트
                 </label>
                 <textarea
-                id="transcript"
-                rows={3}
-                className={getInputClass()}
-                value={transcript}
-                onChange={(e) => {
-                    setTranscript(e.target.value);
-                    setPromptText(e.target.value);
-                }}
-                placeholder="음성 인식이 여기에 표시됩니다..."
+                  id="transcriptArea" // id 변경 (기존 transcript는 상태명과 중복)
+                  rows={3}
+                  className={getInputClass()}
+                  value={transcript} // 중간 결과 포함된 전체 내용 표시
+                  onChange={(e) => {
+                      setTranscript(e.target.value);
+                      // 타이핑 시 finalTranscript도 업데이트하여 promptText와 동기화되도록 함 (선택적)
+                      setFinalTranscript(e.target.value);
+                      setPromptText(e.target.value);
+                  }}
+                  placeholder={listening && !transcript ? "듣고 있어요..." : "음성 인식 결과가 여기에 표시됩니다..."}
+                  readOnly={listening} // 듣고 있을 때는 편집 방지 (선택적)
                 />
             </div>
+            {/* ... (최종 질문, 예시 문장, 최근 질문 등 기존 UI 유지) ... */}
             <div>
                 <label htmlFor="prompt" className="font-medium text-gray-700 dark:text-gray-300 hc:text-black">
                 🔧 최종 질문
@@ -313,6 +425,7 @@ export default function ChatRagUI() {
                         onClick={() => {
                         setPromptText(ex);
                         setTranscript(ex);
+                        setFinalTranscript(ex); // 예시 선택 시 finalTranscript도 업데이트
                         }}
                         className="w-full text-left p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 text-blue-600 dark:text-blue-400 hc:text-blue-600 hc:hover:bg-gray-200 underline"
                     >
@@ -332,6 +445,7 @@ export default function ChatRagUI() {
                             onClick={() => {
                             setPromptText(h);
                             setTranscript(h);
+                            setFinalTranscript(h); // 히스토리 선택 시 finalTranscript도 업데이트
                             }}
                             className="w-full text-left p-2 text-sm rounded-md bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 text-gray-600 dark:text-gray-300 hc:bg-gray-100 hc:text-gray-700"
                             title={h}
@@ -353,14 +467,15 @@ export default function ChatRagUI() {
         </button>
       </motion.div>
 
-      {/* RIGHT PANEL */}
+      {/* RIGHT PANEL (기존과 동일) */}
+      {/* ... */}
       <motion.section
         role="region"
         aria-label="응답 패널"
         className={`flex-1 p-4 md:p-6 overflow-y-auto space-y-4 rounded-2xl shadow-xl mt-4 lg:mt-20
-                    bg-white /* 라이트 모드: 패널 배경 흰색 */
-                    dark:bg-gray-800 /* 다크 모드: 패널 배경 */
-                    hc:border-2 hc:border-black hc:bg-white /* 고대비 모드: 패널 */`}
+                    bg-white
+                    dark:bg-gray-800
+                    hc:border-2 hc:border-black hc:bg-white`}
         initial={{ x: 50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
