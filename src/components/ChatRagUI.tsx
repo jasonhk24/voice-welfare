@@ -139,7 +139,6 @@ export default function ChatRagUI() {
     '노인 대상 복지 혜택 추천해줘.',
     '청년 취업 지원 제도 알려줘.',
   ];
-
   return (
     <main
       role="main"
@@ -254,23 +253,30 @@ export default function ChatRagUI() {
           ✅ 확인 & 전송
         </button>
       </motion.div>
-
       {/* RIGHT PANEL */}
-      {messages.map(msg => (
-          <article
-            key={msg.id}
-            className={`max-w-2xl p-4 rounded-lg ${
-              msg.role === 'user'
-                ? 'mr-auto bg-gray-100 text-left'
-                : 'ml-auto bg-blue-100 text-left'
-            } font-semibold`}
-            tabIndex={0}
-            role="article"
-            aria-label={msg.role === 'user' ? '사용자 메시지' : '답변 메시지'}
-          >
-            <pre className="whitespace-pre-wrap">{msg.content}</pre>
-            {msg.isPlaceholder && <span className="animate-pulse ml-2">💭</span>}
-          </article>
+      <motion.section
+        role="region"
+        aria-label="응답 패널"
+        className="flex-1 p-6 overflow-y-auto space-y-4 bg-white rounded-3xl mr-4"
+        initial={{ x: 50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+      >
+        {messages.map(msg => (
+            <article
+              key={msg.id}
+              className={`max-w-2xl p-4 rounded-lg ${
+                msg.role === 'user'
+                  ? 'mr-auto bg-gray-100 text-left'
+                  : 'ml-auto bg-blue-100 text-left'
+              } font-semibold`}
+              tabIndex={0}
+              role="article"
+              aria-label={msg.role === 'user' ? '사용자 메시지' : '답변 메시지'}
+            >
+              <pre className="whitespace-pre-wrap">{msg.content}</pre>
+              {msg.isPlaceholder && <span className="animate-pulse ml-2">💭</span>}
+            </article>
         ))}
       </motion.section>
     </main>
