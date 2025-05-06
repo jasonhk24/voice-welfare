@@ -47,8 +47,6 @@ export default function ChatRagUI() {
   const [fontLevel, setFontLevel] = useState(5);
   const fontScale = fontLevel / 5;
 
-  // 로딩 상태
-  const [loading, setLoading] = useState(false);
 
   // 음성 인식 상태
   const [listening, setListening] = useState(false);
@@ -117,7 +115,6 @@ export default function ChatRagUI() {
     setMessages(prev => [...prev, userMsg, placeholderMsg]);
     setTranscript('');
     setPromptText('');
-    setLoading(true);
 
     // 2초 후 실제 응답으로 대체
     setTimeout(() => {
@@ -130,7 +127,6 @@ export default function ChatRagUI() {
         const filtered = prev.filter(m => !m.isPlaceholder);
         return [...filtered, ...botMsgs];
       });
-      setLoading(false);
     }, 2000);
   };
 
