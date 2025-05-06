@@ -4,9 +4,8 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-//
 // Web Speech API 타입 선언 (기존과 동일)
-//
+// ... (이전 코드와 동일하게 유지)
 type SpeechRecognition = {
   lang: string;
   interimResults: boolean;
@@ -35,44 +34,32 @@ declare global {
   }
 }
 
+
 interface Message {
   id: number;
   role: "user" | "assistant";
   content: string;
-  originalContent?: string; // "원문 보기"를 위한 필드
+  originalContent?: string;
   isPlaceholder?: boolean;
-  isExpanded?: boolean; // "더 보기" 기능을 위한 필드
-  category?: "연금" | "고용" | "복지" | "일반"; // 로딩 애니메이션 및 스타일링용
+  isExpanded?: boolean;
+  category?: "연금" | "고용" | "복지" | "일반";
 }
 
 type Theme = "light" | "dark" | "high-contrast";
 
 export default function ChatRagUI() {
-  // 폰트 스케일
   const [fontLevel, setFontLevel] = useState(5);
   const fontScale = fontLevel / 5;
-
-  // 테마 상태
   const [theme, setTheme] = useState<Theme>("light");
-
-  // 음성 인식 상태
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [promptText, setPromptText] = useState("");
   const recogRef = useRef<SpeechRecognition | null>(null);
-
-  // 메시지 리스트
   const [messages, setMessages] = useState<Message[]>([]);
-  // 메시지 내용 보기 모드 (쉬운 설명/원문) - 메시지 ID별로 관리
   const [viewModes, setViewModes] = useState<Record<number, "simplified" | "original">>({});
-  // 메시지 확장 상태 - 메시지 ID별로 관리
   const [expandedStates, setExpandedStates] = useState<Record<number, boolean>>({});
-
-
-  // 탐색 히스토리
   const [history, setHistory] = useState<string[]>([]);
 
-  // 더미 응답 (카테고리 및 원문 예시 추가)
   const dummyResponses: Omit<Message, "id" | "role">[] = [
     {
       content: "장애인 연금은 경제적으로 어려움을 겪는 장애인의 생활 안정을 돕기 위한 제도입니다. 소득과 재산 기준을 충족하는 경우 매월 일정 금액을 지원받을 수 있어요.",
@@ -91,7 +78,6 @@ export default function ChatRagUI() {
     },
   ];
 
-  // 테마 적용 및 localStorage 연동
   useEffect(() => {
     const savedTheme = localStorage.getItem("chatTheme") as Theme | null;
     if (savedTheme) {
@@ -100,12 +86,12 @@ export default function ChatRagUI() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.classList.remove("light", "dark", "high-contrast");
-    document.documentElement.classList.add(theme);
+    const root = document.documentElement;
+    root.classList.remove("light", "dark", "high-contrast"); // 기존 테마 클래스 모두 제거
+    root.classList.add(theme); // 현재 테마 클래스 추가
     localStorage.setItem("chatTheme", theme);
   }, [theme]);
 
-  // 토글 음성 인식
   const toggleListen = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -118,11 +104,10 @@ export default function ChatRagUI() {
       const recog = new SR() as SpeechRecognition;
       recogRef.current = recog;
       recog.lang = "ko-KR";
-      recog.interimResults = true; // 중간 결과도 받음
+      recog.interimResults = true;
       recog.onstart = () => setListening(true);
       recog.onend = () => {
         setListening(false);
-        // 음성 인식이 끝나면 최종 텍스트로 promptText 업데이트
         if (transcript.trim()) {
             setPromptText(transcript.trim());
         }
@@ -139,10 +124,10 @@ export default function ChatRagUI() {
             .join('');
 
         if(finalText){
-            setTranscript(prev => prev + finalText); // 인식된 최종 텍스트를 기존 transcript에 추가 (띄어쓰기 등 고려)
+            setTranscript(prev => prev + finalText);
             setPromptText(prev => prev + finalText);
         } else {
-            setTranscript(prevTranscript => { // 마지막 interim transcript만 반영하도록 수정
+            setTranscript(prevTranscript => {
                  const lastWordBoundary = prevTranscript.lastIndexOf(' ');
                  const base = lastWordBoundary === -1 ? '' : prevTranscript.substring(0, lastWordBoundary + 1);
                  return base + interimText;
@@ -153,44 +138,33 @@ export default function ChatRagUI() {
     }
   };
 
-  // 질문 전송 핸들러
   const handleSend = useCallback(() => {
     const trimmedPrompt = promptText.trim();
     if (!trimmedPrompt) {
       alert("먼저 질문을 입력하거나 말해주세요.");
       return;
     }
-
-    // 사용자 메시지
     const userMsg: Message = {
       id: Date.now(),
       role: "user",
       content: trimmedPrompt,
       category: "일반",
     };
-    // placeholder 메시지
     const placeholderMsg: Message = {
       id: Date.now() + 1,
       role: "assistant",
       content: "생각중입니다...",
       isPlaceholder: true,
-      category: "일반", // 또는 사용자의 질문 카테고리 추론
+      category: "일반",
     };
-
     setMessages((prev) => [...prev, userMsg, placeholderMsg]);
-
-    // 히스토리 업데이트
     setHistory((prevHistory) => {
       const newHistory = [trimmedPrompt, ...prevHistory.filter(h => h !== trimmedPrompt)];
-      return newHistory.slice(0, 3); // 최근 3개만 유지
+      return newHistory.slice(0, 3);
     });
-
     setTranscript("");
     setPromptText("");
-
-    // 2초 후 실제 응답으로 대체
     setTimeout(() => {
-      // 랜덤하게 더미 응답 중 하나 선택
       const randomDummy = dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
       const botMsg: Message = {
         id: Date.now() + 2,
@@ -198,17 +172,16 @@ export default function ChatRagUI() {
         content: randomDummy.content,
         originalContent: randomDummy.originalContent,
         category: randomDummy.category,
-        isExpanded: false, // 기본은 축소된 상태
+        isExpanded: false,
       };
-      setViewModes(prev => ({...prev, [botMsg.id]: "simplified"})); // 기본은 쉬운 설명
-      setExpandedStates(prev => ({...prev, [botMsg.id]: (botMsg.content.length <= 100) })); // 내용 짧으면 기본 확장
-
+      setViewModes(prev => ({...prev, [botMsg.id]: "simplified"}));
+      setExpandedStates(prev => ({...prev, [botMsg.id]: (botMsg.content.length <= 100) }));
       setMessages((prev) => {
         const filtered = prev.filter((m) => !m.isPlaceholder);
         return [...filtered, botMsg];
       });
     }, 2000);
-  }, [promptText, dummyResponses]);
+  }, [promptText, dummyResponses]); // dummyResponses 추가
 
   const examples = [
     "장애인 연금 지원 알려줘.",
@@ -216,7 +189,6 @@ export default function ChatRagUI() {
     "청년 취업 지원 제도 뭐 있어?",
   ];
 
-  // 메시지 보기 모드 토글
   const toggleViewMode = (id: number) => {
     setViewModes(prev => ({
       ...prev,
@@ -224,7 +196,6 @@ export default function ChatRagUI() {
     }));
   };
 
-  // 메시지 확장/축소 토글
   const toggleExpand = (id: number) => {
     setExpandedStates(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -233,30 +204,31 @@ export default function ChatRagUI() {
     `px-4 py-2 min-h-[52px] rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-150 ease-in-out
      text-gray-800 dark:text-gray-200
      ${isActive ?
-        'bg-blue-500 dark:bg-blue-700 text-white ring-blue-400 dark:ring-blue-500' :
-        'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 ring-gray-300 dark:ring-gray-500'
+        'bg-blue-500 dark:bg-blue-600 text-white ring-blue-400 dark:ring-blue-500 hc:bg-blue-500 hc:text-white' :
+        'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 ring-gray-300 dark:ring-gray-500 hc:bg-white hc:hover:bg-gray-100'
      }
-     hc:border-2 hc:border-black hc:text-black hc:bg-white`; // 고대비 스타일
+     hc:border-2 hc:border-black`;
 
   const getInputClass = () =>
     `w-full min-h-[52px] border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500
      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600
      hc:border-2 hc:border-black hc:text-black hc:bg-white`;
 
-
   return (
     <main
       role="main"
       style={{ fontSize: `${fontScale}rem` }}
-      className="relative flex flex-col lg:flex-row w-full min-h-screen h-full gap-4 lg:gap-8 py-4 px-2 md:px-4 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 hc:bg-white hc:text-black transition-colors duration-150 ease-in-out overflow-y-auto"
+      className={`relative flex flex-col lg:flex-row w-full min-h-screen h-full gap-4 lg:gap-8 py-4 px-2 md:px-4
+                 text-gray-900 transition-colors duration-150 ease-in-out overflow-y-auto
+                 bg-yellow-50  /* 라이트 모드: 파스텔톤 노란색 배경 */
+                 dark:bg-gray-900 dark:text-gray-100 /* 다크 모드 배경 및 텍스트 */
+                 hc:bg-white hc:text-black /* 고대비 모드 배경 및 텍스트 */`}
     >
-      {/* 상단 컨트롤 바 */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20 p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg shadow-md">
-        {/* 폰트 조절 */}
-        <button onClick={() => setFontLevel((l) => Math.max(1, l - 1))} className={getButtonClass()} aria-label="글자 작게"> 작게 </button>
-        <button onClick={() => setFontLevel(5)} className={getButtonClass()} aria-label="글자 원래대로"> 보통 </button>
-        <button onClick={() => setFontLevel((l) => Math.min(10, l + 1))} className={getButtonClass()} aria-label="글자 크게"> 크게 </button>
-        {/* 테마 조절 */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20 p-2 bg-white/80 dark:bg-gray-800/80 hc:bg-white/80 hc:border hc:border-black backdrop-blur-sm rounded-lg shadow-md">
+        <button onClick={() => setFontLevel((l) => Math.max(1, l - 1))} className={getButtonClass(false) + " hc:text-black"} aria-label="글자 작게"> 작게 </button>
+        <button onClick={() => setFontLevel(5)} className={getButtonClass(false) + " hc:text-black"} aria-label="글자 원래대로"> 보통 </button>
+        <button onClick={() => setFontLevel((l) => Math.min(10, l + 1))} className={getButtonClass(false) + " hc:text-black"} aria-label="글자 크게"> 크게 </button>
+
         <button onClick={() => setTheme("light")} className={getButtonClass(theme === "light")} aria-label="라이트 모드">☀️</button>
         <button onClick={() => setTheme("dark")} className={getButtonClass(theme === "dark")} aria-label="다크 모드">🌙</button>
         <button onClick={() => setTheme("high-contrast")} className={getButtonClass(theme === "high-contrast")} aria-label="고대비 모드">👁️</button>
@@ -266,7 +238,10 @@ export default function ChatRagUI() {
       <motion.div
         role="region"
         aria-label="입력 패널"
-        className="flex-shrink-0 p-4 md:p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full lg:w-1/3 xl:w-1/4 flex flex-col justify-between mt-20 lg:mt-4 hc:border-2 hc:border-black"
+        className={`flex-shrink-0 p-4 md:p-6 rounded-2xl shadow-xl w-full lg:w-1/3 xl:w-1/4 flex flex-col justify-between mt-20 lg:mt-4
+                    bg-white /* 라이트 모드: 패널 배경 흰색 */
+                    dark:bg-gray-800 /* 다크 모드: 패널 배경 */
+                    hc:border-2 hc:border-black hc:bg-white /* 고대비 모드: 패널 */`}
         initial={{ x: -50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
@@ -293,7 +268,7 @@ export default function ChatRagUI() {
                     setTranscript("");
                     setPromptText("");
                 }}
-                className={getButtonClass() + ` font-semibold`}
+                className={getButtonClass(false) + ` font-semibold hc:text-black`} /* 기본 버튼 스타일 상속 및 hc 텍스트 색상 명시 */
                 aria-label="입력 내용 지우기"
                 >
                 지우기
@@ -310,7 +285,7 @@ export default function ChatRagUI() {
                 value={transcript}
                 onChange={(e) => {
                     setTranscript(e.target.value);
-                    setPromptText(e.target.value); // 타이핑 시 최종 질문에도 반영
+                    setPromptText(e.target.value);
                 }}
                 placeholder="음성 인식이 여기에 표시됩니다..."
                 />
@@ -382,11 +357,14 @@ export default function ChatRagUI() {
       <motion.section
         role="region"
         aria-label="응답 패널"
-        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 bg-white dark:bg-gray-800 rounded-2xl shadow-xl mt-4 lg:mt-20 hc:border-2 hc:border-black"
+        className={`flex-1 p-4 md:p-6 overflow-y-auto space-y-4 rounded-2xl shadow-xl mt-4 lg:mt-20
+                    bg-white /* 라이트 모드: 패널 배경 흰색 */
+                    dark:bg-gray-800 /* 다크 모드: 패널 배경 */
+                    hc:border-2 hc:border-black hc:bg-white /* 고대비 모드: 패널 */`}
         initial={{ x: 50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
-        aria-live="polite" // 새로운 메시지 알림
+        aria-live="polite"
       >
         <AnimatePresence>
           {messages.map((msg) => (
@@ -396,11 +374,11 @@ export default function ChatRagUI() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, transition: { duration: 0.2 } }}
-              className={`max-w-full lg:max-w-3xl p-4 rounded-xl shadow ${
-                msg.role === "user"
+              className={`max-w-full lg:max-w-3xl p-4 rounded-xl shadow  font-medium
+                ${ msg.role === "user"
                   ? "mr-auto bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hc:bg-gray-100 hc:text-black hc:border hc:border-gray-400"
                   : "ml-auto bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 hc:bg-blue-100 hc:text-black hc:border hc:border-blue-400"
-              } font-medium`}
+                }`}
               tabIndex={0}
               role="article"
               aria-label={msg.role === "user" ? `사용자 메시지: ${msg.content.substring(0,30)}` : `챗봇 답변: ${msg.content.substring(0,30)}`}
@@ -420,32 +398,25 @@ export default function ChatRagUI() {
                       : msg.content}
                   </pre>
                   {msg.role === 'assistant' && (
-                    <>
-                    {msg.originalContent && ( /* 쉬운말/원문 토글은 원문이 있을 때만 */
+                    <div className="mt-2 flex flex-wrap gap-2">
+                    {msg.originalContent && (
                         <button
                             onClick={() => toggleViewMode(msg.id)}
-                            className="text-xs mt-2 px-2 py-1 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 hc:bg-gray-300 hc:text-black"
+                            className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 hc:bg-gray-300 hc:text-black"
                         >
                             {viewModes[msg.id] === 'simplified' ? '원문 보기' : '쉬운 설명 보기'}
                         </button>
                     )}
-                    {/* 더 보기/간략히 버튼은 내용이 길 때만 (예: 100자 초과) */}
                     {(msg.content.length > 100 || (msg.originalContent && viewModes[msg.id] === 'original' && msg.originalContent.length > 100)) && (
                         <button
                             onClick={() => toggleExpand(msg.id)}
-                            className="text-xs mt-2 ml-2 px-2 py-1 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 hc:bg-gray-300 hc:text-black"
+                            className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 hc:bg-gray-300 hc:text-black"
                         >
                             {expandedStates[msg.id] ? '간략히 보기' : '더 보기'}
                         </button>
                     )}
-                    </>
+                    </div>
                   )}
-                  {/* 더 보기/간략히 기능에 따라 실제 내용 표시 조절 */}
-                  {/* 이 부분은 pre 태그 내용을 조건부로 잘라서 보여주거나, CSS로 max-height를 조절하는 방식으로 구현해야 합니다. */}
-                  {/* 간단하게는 expandedStates[msg.id]가 false일 때 content를 잘라서 보여줄 수 있습니다. */}
-                  {/* 예를 들어, <pre> 내부에 {expandedStates[msg.id] ? currentContent : currentContent.substring(0,100) + "..."} </pre> */}
-                  {/* 하지만 pre 태그의 특성상 줄바꿈 등이 유지되려면 좀 더 복잡한 처리가 필요할 수 있습니다. */}
-                  {/* 여기서는 버튼만 두고, 실제 내용 자르기는 CSS의 line-clamp나 JS를 통한 문자열 조작으로 구현 가능합니다. */}
                 </>
               )}
             </motion.article>
@@ -462,40 +433,3 @@ export default function ChatRagUI() {
     </main>
   );
 }
-
-// globals.css 또는 해당 컴포넌트의 <style jsx global> 등에 추가할 CSS
-/*
-:root {
-  --bg-light: #f9fafb; --text-light: #1f2937;
-  --bg-dark: #111827; --text-dark: #f3f4f6;
-  --bg-hc: white; --text-hc: black; --border-hc: black;
-
-  --btn-bg-light: white; --btn-text-light: #374151;
-  --btn-bg-dark: #374151; --btn-text-dark: #d1d5db;
-  --btn-bg-hc: white; --btn-text-hc: black; --btn-border-hc: black;
-}
-
-.light { background-color: var(--bg-light); color: var(--text-light); }
-.dark { background-color: var(--bg-dark); color: var(--text-dark); }
-.high-contrast { background-color: var(--bg-hc); color: var(--text-hc); }
-
-.high-contrast button, .high-contrast input, .high-contrast textarea, .high-contrast div, .high-contrast section, .high-contrast article {
-  border: 1px solid var(--border-hc, black) !important; // Tailwind CSS hc: 접두사로 대체
-  background-color: var(--bg-hc, white) !important;
-  color: var(--text-hc, black) !important;
-}
-.high-contrast .text-blue-600 { color: blue !important; } // 고대비 시 특정 색상 강제
-
-*/
-
-// Tailwind CSS 설정 파일 (tailwind.config.js)에 hc variant 추가
-/*
-module.exports = {
-  // ...
-  plugins: [
-    function({ addVariant }) {
-      addVariant('hc', '.high-contrast &') // 또는 'html.high-contrast &'
-    }
-  ],
-}
-*/
