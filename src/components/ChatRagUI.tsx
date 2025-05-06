@@ -256,42 +256,22 @@ export default function ChatRagUI() {
       </motion.div>
 
       {/* RIGHT PANEL */}
-      <motion.section
-        role="region"
-        aria-label="응답 패널"
-        className="flex-1 p-6 overflow-y-auto space-y-4 bg-white rounded-3xl mr-4"
-        initial={{ x: 50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-2xl font-semibold mb-4">조건에 맞는 복지 검색중...</p>
-            <div
-              className="w-8 h-8 border-4 border-t-blue-500 rounded-full animate-spin"
-              role="status"
-              aria-label="로딩 중"
-            />
-          </div>
-        ) : (
-          messages.map(msg => (
-            <article
-              key={msg.id}
-              className={`max-w-2xl p-4 rounded-lg ${
-                msg.role === 'user'
-                  ? 'mr-auto bg-gray-100 text-left'
-                  : 'ml-auto bg-blue-100 text-right'
-              }`}
-              tabIndex={0}
-              role="article"
-            >
-              <pre className="whitespace-pre-wrap">
-                {msg.content}
-                {msg.isPlaceholder && <span className="animate-pulse ml-2">💭</span>}
-              </pre>
-            </article>
-          ))
-        )}
+      {messages.map(msg => (
+          <article
+            key={msg.id}
+            className={`max-w-2xl p-4 rounded-lg ${
+              msg.role === 'user'
+                ? 'mr-auto bg-gray-100 text-left'
+                : 'ml-auto bg-blue-100 text-left'
+            } font-semibold`}
+            tabIndex={0}
+            role="article"
+            aria-label={msg.role === 'user' ? '사용자 메시지' : '답변 메시지'}
+          >
+            <pre className="whitespace-pre-wrap">{msg.content}</pre>
+            {msg.isPlaceholder && <span className="animate-pulse ml-2">💭</span>}
+          </article>
+        ))}
       </motion.section>
     </main>
   );
