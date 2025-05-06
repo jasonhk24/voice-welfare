@@ -30,8 +30,8 @@ interface SpeechRecognitionResult {
 
 declare global {
   interface Window {
-    SpeechRecognition: { new(): SpeechRecognition };
-    webkitSpeechRecognition: { new(): SpeechRecognition };
+    SpeechRecognition: { new (): SpeechRecognition };
+    webkitSpeechRecognition: { new (): SpeechRecognition };
   }
 }
 
@@ -43,26 +43,36 @@ interface Message {
 }
 
 export default function ChatRagUI() {
-  const [fontLevel, setFontLevel] = useState(5);      // 1~10 단계
-  const fontScale = fontLevel / 5;                    // 폰트 스케일 계산
+  // 폰트 스케일
+  const [fontLevel, setFontLevel] = useState(5);
+  const fontScale = fontLevel / 5;
+
+  // 로딩 상태
   const [loading, setLoading] = useState(false);
 
+  // 음성 인식 상태
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [promptText, setPromptText] = useState('');
   const recogRef = useRef<SpeechRecognition | null>(null);
 
+  // 메시지 리스트
   const [messages, setMessages] = useState<Message[]>([]);
 
+  // 더미 응답
   const dummyResponses = [
     '🎯 장애인 연금 지원: 장애인에게 매달 일정 금액을 지원하여 생활 안정에 도움을 줍니다.',
     '🎯 장애인 고용 지원: 직업 훈련 및 고용 알선, 인센티브 제공으로 일자리 찾기를 지원합니다.',
     '🎯 장애인 복지 서비스: 의료·상담·재활 서비스 등을 제공하여 삶의 질을 향상시킵니다.',
   ];
 
+  // 토글 음성 인식
   const toggleListen = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return alert('음성 인식을 지원하지 않습니다.');
+    if (!SR) {
+      alert('음성 인식을 지원하지 않습니다.');
+      return;
+    }
     if (listening) {
       recogRef.current?.stop();
     } else {
@@ -82,36 +92,46 @@ export default function ChatRagUI() {
     }
   };
 
+  // 질문 전송 핸들러
   const handleSend = () => {
-      if (!promptText.trim()) return alert('먼저 질문을 입력하거나 말해주세요.');
-      const userMsg: Message = {
-        id: Date.now(),
-        role: 'user',
-        content: promptText.trim(),
-      };
-      const thinkingMsg: Message = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: '생각중입니다...',
-        isPlaceholder: true,
-      };
-      setMessages(prev => [...prev, userMsg, thinkingMsg]);
-      setTranscript('');
-      setPromptText('');
-      setTimeout(() => {
-        const botMsgs = dummyResponses.map((text, i) => ({
-          id: Date.now() + 2 + i,
-          role: 'assistant' as const,
-          content: text,
-        }));
-        setMessages(prev => {
-          const filtered = prev.filter(m => !m.isPlaceholder);
-          return [...filtered, ...botMsgs];
-        });
-      }, 2000);
+    if (!promptText.trim()) {
+      alert('먼저 질문을 입력하거나 말해주세요.');
+      return;
+    }
+
+    // 사용자 메시지
+    const userMsg: Message = {
+      id: Date.now(),
+      role: 'user',
+      content: promptText.trim(),
     };
+    // placeholder 메시지
+    const placeholderMsg: Message = {
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: '생각중입니다...',
+      isPlaceholder: true,
+    };
+
+    // 메시지 누적
+    setMessages(prev => [...prev, userMsg, placeholderMsg]);
     setTranscript('');
     setPromptText('');
+    setLoading(true);
+
+    // 2초 후 실제 응답으로 대체
+    setTimeout(() => {
+      const botMsgs = dummyResponses.map((text, i) => ({
+        id: Date.now() + 2 + i,
+        role: 'assistant' as const,
+        content: text,
+      }));
+      setMessages(prev => {
+        const filtered = prev.filter(m => !m.isPlaceholder);
+        return [...filtered, ...botMsgs];
+      });
+      setLoading(false);
+    }, 2000);
   };
 
   const examples = [
@@ -126,7 +146,7 @@ export default function ChatRagUI() {
       style={{ fontSize: `${fontScale}rem` }}
       className="relative flex w-full h-screen gap-8 py-8 px-4 bg-gradient-to-br from-yellow-100 to-yellow-50 overflow-auto"
     >
-      {/* 폰트 크기 조절 */}
+      {/* 폰트 조절 */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
         <button
           onClick={() => setFontLevel(l => Math.max(1, l - 1))}
@@ -171,20 +191,28 @@ export default function ChatRagUI() {
               {listening ? '■ 중지' : '🎤 말하기'}
             </button>
             <button
-              onClick={() => { setTranscript(''); setPromptText(''); }}
+              onClick={() => {
+                setTranscript('');
+                setPromptText('');
+              }}
               className="min-h-[48px] py-2 px-4 bg-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
             >
               지우기
             </button>
           </div>
           <div>
-            <label htmlFor="transcript" className="font-medium">📝 인식된 텍스트</label>
+            <label htmlFor="transcript" className="font-medium">
+              📝 인식된 텍스트
+            </label>
             <textarea
               id="transcript"
               rows={3}
               className="w-full min-h-[48px] border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               value={transcript}
-              onChange={e => { setTranscript(e.target.value); setPromptText(e.target.value); }}
+              onChange={e => {
+                setTranscript(e.target.value);
+                setPromptText(e.target.value);
+              }}
             />
           </div>
           <div>
@@ -193,7 +221,10 @@ export default function ChatRagUI() {
               {examples.map(ex => (
                 <li key={ex}>
                   <button
-                    onClick={() => { setPromptText(ex); setTranscript(ex); }}
+                    onClick={() => {
+                      setPromptText(ex);
+                      setTranscript(ex);
+                    }}
                     className="underline focus:outline-none focus:ring-2 focus:ring-blue-400"
                   >
                     {ex}
@@ -203,7 +234,9 @@ export default function ChatRagUI() {
             </ul>
           </div>
           <div>
-            <label htmlFor="prompt" className="font-medium">🔧 최종 질문</label>
+            <label htmlFor="prompt" className="font-medium">
+              🔧 최종 질문
+            </label>
             <input
               id="prompt"
               type="text"
@@ -241,22 +274,23 @@ export default function ChatRagUI() {
             />
           </div>
         ) : (
-          {messages.map(msg => (
-              <article
-                key={msg.id}
-                className={`max-w-2xl p-4 rounded-lg ${
-                  msg.role === 'user'
-                    ? 'mr-auto bg-gray-100 text-left'
-                    : 'ml-auto bg-blue-100 text-right'
-                }`}
-                tabIndex={0}
-                role="article"
-                aria-label={msg.role === 'user' ? '사용자 메시지' : '답변 메시지'}
-              >
+          messages.map(msg => (
+            <article
+              key={msg.id}
+              className={`max-w-2xl p-4 rounded-lg ${
+                msg.role === 'user'
+                  ? 'mr-auto bg-gray-100 text-left'
+                  : 'ml-auto bg-blue-100 text-right'
+              }`}
+              tabIndex={0}
+              role="article"
+            >
+              <pre className="whitespace-pre-wrap">
                 {msg.content}
                 {msg.isPlaceholder && <span className="animate-pulse ml-2">💭</span>}
-              </article>
-            ))}
+              </pre>
+            </article>
+          ))
         )}
       </motion.section>
     </main>
