@@ -18,46 +18,41 @@ type SpeechRecognition = {
   stop(): void;
 };
 
-// SpeechRecognitionErrorEvent는 error와 message 속성을 가질 수 있습니다.
-// 표준 Event 타입과 다를 수 있어 명시적으로 정의합니다.
 interface SpeechRecognitionErrorEvent extends Event {
-  error: string; // 예: 'no-speech', 'audio-capture', 'not-allowed'
-  message: string; // 오류에 대한 설명 메시지 (브라우저 제공)
+  error: string;
+  message: string;
 }
 
-// SpeechRecognitionEvent는 results와 resultIndex 속성을 가집니다.
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
-  resultIndex: number; // 변경된 첫 번째 결과의 인덱스
+  resultIndex: number;
 }
 
-// SpeechRecognitionResultList는 SpeechRecognitionResult의 배열과 유사한 객체입니다.
 interface SpeechRecognitionResultList {
   readonly length: number;
   item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult; // 인덱스로 직접 접근 허용
+  [index: number]: SpeechRecognitionResult;
 }
 
-// SpeechRecognitionResult는 isFinal과 SpeechRecognitionAlternative 배열을 가집니다.
 interface SpeechRecognitionResult {
   readonly isFinal: boolean;
   readonly length: number;
   item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative; // 인덱스로 직접 접근 허용
+  [index: number]: SpeechRecognitionAlternative;
 }
 
-// SpeechRecognitionAlternative는 실제 인식된 텍스트와 신뢰도를 가집니다.
 interface SpeechRecognitionAlternative {
   readonly transcript: string;
   readonly confidence: number;
 }
 
-// 전역 window 객체에 Web Speech API 및 TTS API 타입 추가
+// 전역 window 객체에 Web Speech API (STT) 타입 추가
+// speechSynthesis는 내장 타입을 사용하므로 여기서 제거합니다.
 declare global {
   interface Window {
-    SpeechRecognition?: { new (): SpeechRecognition }; // 브라우저 지원 여부 확인 위해 Optional chaining
-    webkitSpeechRecognition?: { new (): SpeechRecognition }; // Chrome계열 접두사
-    speechSynthesis?: SpeechSynthesis; // Web Speech API (TTS)
+    SpeechRecognition?: { new (): SpeechRecognition };
+    webkitSpeechRecognition?: { new (): SpeechRecognition };
+    // speechSynthesis?: SpeechSynthesis; // 이 줄을 삭제합니다!
   }
 }
 
@@ -66,15 +61,34 @@ interface Message {
   id: number;
   role: "user" | "assistant";
   content: string;
-  originalContent?: string; // "원문 보기"를 위한 필드
+  originalContent?: string;
   isPlaceholder?: boolean;
-  isExpanded?: boolean; // "더 보기" 기능을 위한 필드
-  category?: "연금" | "고용" | "복지" | "일반"; // 로딩 애니메이션 및 스타일링용
-  isPlaying?: boolean; // TTS 재생 상태를 위한 필드
+  isExpanded?: boolean;
+  category?: "연금" | "고용" | "복지" | "일반";
+  isPlaying?: boolean;
 }
 
 // 테마 타입 정의
 type Theme = "light" | "dark" | "high-contrast";
+
+// dummyResponses를 컴포넌트 외부로 이동
+const DUMMY_RESPONSES: Omit<Message, "id" | "role">[] = [
+  {
+    content: "장애인 연금은 경제적으로 어려움을 겪는 장애인의 생활 안정을 돕기 위한 제도입니다. 소득과 재산 기준을 충족하는 경우 매월 일정 금액을 지원받을 수 있어요.",
+    originalContent: "장애인연금법에 따라, 장애로 인하여 생활이 어려운 중증장애인의 생활안정 지원을 목적으로 하며, 근로능력의 상실 또는 현저한 감소로 인하여 줄어든 소득을 보전하기 위하여 매월 일정액의 연금을 지급하는 사회보장제도이다.",
+    category: "연금",
+  },
+  {
+    content: "장애인 고용 지원은 장애인이 직업을 갖고 사회의 일원으로 참여할 수 있도록 돕습니다. 직업 훈련, 취업 알선, 그리고 사업주에게는 고용 장려금 등을 지원해요.",
+    originalContent: "장애인고용촉진 및 직업재활법에 의거하여, 국가는 장애인의 고용촉진 및 직업재활을 위하여 필요한 지원시책을 종합적으로 추진해야 한다. 주요 사업으로는 직업능력개발훈련, 취업알선, 고용장려금 지급 등이 있다.",
+    category: "고용",
+  },
+  {
+    content: "장애인 복지 서비스에는 다양한 지원이 포함됩니다. 예를 들어, 활동 지원 서비스를 통해 일상생활이나 사회활동에 도움을 받을 수 있고, 의료비 지원이나 보조기기 지원 등도 받을 수 있어요.",
+    originalContent: "장애인복지법은 장애인의 인간다운 삶과 권리보장을 위한 국가와 지방자치단체 등의 책임을 명백히 하고, 장애발생 예방과 장애인의 의료·교육·직업재활·생활환경개선 등에 관한 사업을 정하여 장애인복지대책을 종합적으로 추진함을 목적으로 한다. 활동지원급여, 의료비 지원, 보조기기 교부 등이 이에 해당된다.",
+    category: "복지",
+  },
+];
 
 export default function ChatRagUI() {
   const [fontLevel, setFontLevel] = useState(5);
@@ -90,27 +104,7 @@ export default function ChatRagUI() {
   const [history, setHistory] = useState<string[]>([]);
   const [speechStatus, setSpeechStatus] = useState<string>("");
   const [micError, setMicError] = useState<string>("");
-
-  // TTS 관련 상태
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-  const dummyResponses: Omit<Message, "id" | "role">[] = [
-    {
-      content: "장애인 연금은 경제적으로 어려움을 겪는 장애인의 생활 안정을 돕기 위한 제도입니다. 소득과 재산 기준을 충족하는 경우 매월 일정 금액을 지원받을 수 있어요.",
-      originalContent: "장애인연금법에 따라, 장애로 인하여 생활이 어려운 중증장애인의 생활안정 지원을 목적으로 하며, 근로능력의 상실 또는 현저한 감소로 인하여 줄어든 소득을 보전하기 위하여 매월 일정액의 연금을 지급하는 사회보장제도이다.",
-      category: "연금",
-    },
-    {
-      content: "장애인 고용 지원은 장애인이 직업을 갖고 사회의 일원으로 참여할 수 있도록 돕습니다. 직업 훈련, 취업 알선, 그리고 사업주에게는 고용 장려금 등을 지원해요.",
-      originalContent: "장애인고용촉진 및 직업재활법에 의거하여, 국가는 장애인의 고용촉진 및 직업재활을 위하여 필요한 지원시책을 종합적으로 추진해야 한다. 주요 사업으로는 직업능력개발훈련, 취업알선, 고용장려금 지급 등이 있다.",
-      category: "고용",
-    },
-    {
-      content: "장애인 복지 서비스에는 다양한 지원이 포함됩니다. 예를 들어, 활동 지원 서비스를 통해 일상생활이나 사회활동에 도움을 받을 수 있고, 의료비 지원이나 보조기기 지원 등도 받을 수 있어요.",
-      originalContent: "장애인복지법은 장애인의 인간다운 삶과 권리보장을 위한 국가와 지방자치단체 등의 책임을 명백히 하고, 장애발생 예방과 장애인의 의료·교육·직업재활·생활환경개선 등에 관한 사업을 정하여 장애인복지대책을 종합적으로 추진함을 목적으로 한다. 활동지원급여, 의료비 지원, 보조기기 교부 등이 이에 해당된다.",
-      category: "복지",
-    },
-  ];
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("chatTheme") as Theme | null;
@@ -146,8 +140,7 @@ export default function ChatRagUI() {
       recogRef.current = recog;
       recog.lang = "ko-KR";
       recog.interimResults = true;
-      recog.continuous = false; // 한 번의 발화 후 자동 종료 (필요시 true로 변경)
-
+      recog.continuous = false;
 
       recog.onstart = () => {
         setListening(true);
@@ -161,8 +154,6 @@ export default function ChatRagUI() {
       recog.onend = () => {
         setListening(false);
         setSpeechStatus("");
-        // onresult에서 isFinal일 때 promptText가 이미 설정되었을 가능성이 높음
-        // 만약 finalTranscriptForDisplay가 더 최신이거나 확실하다면 여기서 한 번 더 설정
         if (finalTranscriptForDisplay.trim() && promptText !== finalTranscriptForDisplay.trim()) {
              setPromptText(finalTranscriptForDisplay.trim());
         }
@@ -171,7 +162,7 @@ export default function ChatRagUI() {
       recog.onresult = (event: SpeechRecognitionEvent) => {
         let interim_transcript_piece = "";
         let final_transcript_piece = "";
-        let current_final_text_so_far = finalTranscriptForDisplay; // 현재까지 누적된 final 텍스트
+        let current_final_text_so_far = finalTranscriptForDisplay;
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const segment = event.results[i][0].transcript;
@@ -183,8 +174,6 @@ export default function ChatRagUI() {
         }
 
         if (final_transcript_piece) {
-          // 이전 누적된 final 텍스트와 현재 이벤트의 final 조각을 합침
-          // (continuous = false 일 경우, 보통 이전 final은 없고 현재 조각만 final이 됨)
           current_final_text_so_far = (current_final_text_so_far + " " + final_transcript_piece).trim();
           setFinalTranscriptForDisplay(current_final_text_so_far);
           setPromptText(current_final_text_so_far);
@@ -250,7 +239,8 @@ export default function ChatRagUI() {
     setSpeechStatus("");
 
     setTimeout(() => {
-      const randomDummy = dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
+      // DUMMY_RESPONSES를 사용하도록 수정
+      const randomDummy = DUMMY_RESPONSES[Math.floor(Math.random() * DUMMY_RESPONSES.length)];
       const botMsg: Message = {
         id: Date.now() + 2, role: "assistant", content: randomDummy.content,
         originalContent: randomDummy.originalContent, category: randomDummy.category,
@@ -260,7 +250,8 @@ export default function ChatRagUI() {
       setViewModes(prev => ({...prev, [botMsg.id]: "simplified"}));
       setMessages((prev) => [...prev.filter((m) => !m.isPlaceholder), botMsg]);
     }, 2000);
-  }, [promptText, dummyResponses]);
+  // useCallback 의존성 배열에서 dummyResponses 제거 (컴포넌트 외부 상수로 이동했으므로)
+  }, [promptText]);
 
   const examples = [
     "장애인 연금 지원 알려줘.",
@@ -293,14 +284,12 @@ export default function ChatRagUI() {
      hc:border-2 hc:border-black hc:text-black hc:bg-white`;
 
   const handleSpeak = (message: Message) => {
-    if (!window.speechSynthesis) {
+    if (!window.speechSynthesis) { // window.speechSynthesis 직접 사용
       alert("음성 출력을 지원하지 않는 브라우저입니다.");
       return;
     }
     if (message.isPlaying) {
       window.speechSynthesis.cancel();
-      // onend 핸들러가 isPlaying을 false로 설정하므로 여기서 중복 호출 안 해도 될 수 있음
-      // setMessages(prev => prev.map(m => m.id === message.id ? { ...m, isPlaying: false } : m));
       return;
     }
     if (window.speechSynthesis.speaking) {
@@ -324,7 +313,6 @@ export default function ChatRagUI() {
     utterance.onerror = (event) => {
       console.error("SpeechSynthesis Error", event);
       setMessages(prev => prev.map(m => m.id === message.id ? { ...m, isPlaying: false } : m));
-      // alert("음성 출력 중 오류가 발생했습니다."); // 사용자에게 너무 많은 알림을 줄 수 있어 일단 주석 처리
       utteranceRef.current = null;
     };
     utteranceRef.current = utterance;
